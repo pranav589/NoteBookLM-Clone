@@ -11,6 +11,7 @@ import { answerQuery, deleteNotebookVectors, deleteSourceVectors } from "./lib/r
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import { ChatOpenAI } from "@langchain/openai";
 import { config } from "./lib/config";
+import "./workers/rag-worker";
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
