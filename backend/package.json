@@ -4,13 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "worker": "tsx src/workers/rag-worker.ts",
+    "worker": "tsx -r dotenv/config src/workers/rag-worker.ts",
     "build": "tsc",
     "start": "node dist/server.js"
   },
   "dependencies": {
     "@langchain/community": "^1.1.29",
     "@langchain/core": "^1.2.3",
+    "@langchain/langgraph": "^1.4.8",
+    "@langchain/langgraph-checkpoint-mongodb": "^1.4.0",
     "@langchain/openai": "^1.5.5",
     "@langchain/qdrant": "^1.0.3",
     "@langchain/textsplitters": "^1.0.1",

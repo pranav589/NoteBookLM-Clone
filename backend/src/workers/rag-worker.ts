@@ -1,10 +1,13 @@
+
 import { Worker } from "bullmq";
 import { connection } from "../lib/queue";
 import { INDEXING_QUEUE, QUERY_QUEUE } from "../lib/config";
-import { connectToDatabase, Source } from "../lib/db";
-import { indexSource, answerQuery } from "../lib/rag-helper";
+import { connectToDatabase, Source, ChatMessage, Notification } from "../lib/db";
+import { indexSource } from "../lib/rag-helper";
+import { askAgent } from "../lib/langgraph-agent";
+import { sseManager } from "../lib/sse-manager";
 
-console.log("👷 Starting RAG background workers...");
+console.log("Worker starting...");
 
 // Initialize DB connection for the worker process
 connectToDatabase().catch((err) => {
@@ -24,6 +27,22 @@ const indexingWorker = new Worker(
       // Set status to indexing in case it wasn't set yet
       await Source.findByIdAndUpdate(sourceId, { status: "indexing" });
 
+      // Notify frontend indexing started
+      const startNotif = await Notification.create({
+        notebookId,
+        type: "progress",
+        title: "Indexing Document",
+        message: `Reading and extracting segments for "${name}"...`,
+        isRead: false,
+      });
+
+      await sseManager.publish(notebookId, {
+        type: "indexing:start",
+        sourceId,
+        sourceName: name,
+        dbNotificationId: startNotif._id,
+      });
+
       const result = await indexSource({
         sourceId,
         notebookId,
@@ -41,14 +60,62 @@ const indexingWorker = new Worker(
         error: null,
       });
 
+      // Clean up start progress notification from DB
+      await Notification.findByIdAndDelete(startNotif._id);
+
+      // Create permanent complete notification
+      const completeNotif = await Notification.create({
+        notebookId,
+        type: "success",
+        title: "Ingestion Success",
+        message: `Successfully indexed "${name}" into ${result.chunks} chunk vectors.`,
+        isRead: false,
+      });
+
+      // Notify frontend indexing complete
+      await sseManager.publish(notebookId, {
+        type: "indexing:complete",
+        sourceId,
+        sourceName: name,
+        chunks: result.chunks,
+        dbNotificationId: completeNotif._id,
+      });
+
       return result;
     } catch (err: any) {
       console.error(`Error indexing source in job ${job.id}:`, err);
       
+      const errMsg = err.message || "Unknown error during ingestion";
       // Save indexing error in database
       await Source.findByIdAndUpdate(sourceId, {
         status: "failed",
-        error: err.message || "Unknown error during ingestion",
+        error: errMsg,
+      });
+
+      // Clean up start progress notification if defined
+      try {
+        const { sourceId } = job.data;
+        await Notification.findOneAndDelete({ notebookId, type: "progress", title: "Indexing Document" });
+      } catch (cleanErr) {
+        console.error("Failed to clean progress notification:", cleanErr);
+      }
+
+      // Create failure notification
+      const failNotif = await Notification.create({
+        notebookId,
+        type: "error",
+        title: "Ingestion Failed",
+        message: `Failed to index "${name}": ${errMsg}`,
+        isRead: false,
+      });
+
+      // Notify frontend indexing failed
+      await sseManager.publish(notebookId, {
+        type: "indexing:failed",
+        sourceId,
+        sourceName: name,
+        error: errMsg,
+        dbNotificationId: failNotif._id,
       });
 
       throw err;
@@ -63,8 +130,26 @@ const queryWorker = new Worker(
   async (job) => {
     console.log(`🔎 Query job ${job.id}: ${JSON.stringify(job.data.query)} inside Notebook: ${job.data.notebookId}`);
     try {
-      const result = await answerQuery(job.data.query, job.data.notebookId);
-      console.log(`   → Answered query. Chunks used: ${result.sources?.length}`);
+      await connectToDatabase();
+      const result = await askAgent(job.data.query, job.data.notebookId);
+      
+      // Save User Question to DB
+      await ChatMessage.create({
+        notebookId: job.data.notebookId,
+        role: "user",
+        content: job.data.query,
+      });
+
+      // Save Assistant Answer to DB
+      await ChatMessage.create({
+        notebookId: job.data.notebookId,
+        role: "assistant",
+        content: result.answer,
+        sources: result.sources,
+        queries: result.queries,
+      });
+
+      console.log(`   → Answered and stored query in DB. Chunks used: ${result.sources?.length}`);
       return result;
     } catch (err: any) {
       console.error(`Error running query in job ${job.id}:`, err);

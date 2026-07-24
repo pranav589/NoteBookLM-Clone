@@ -60,7 +60,7 @@ export async function fetchYoutubeTranscript(url: string): Promise<{ text: strin
     const segments = await YoutubeTranscript.fetchTranscript(videoId);
     return segments.map((item) => ({
       text: item.text,
-      start: item.offset, // In seconds (as a number)
+      start: item.offset / 1000, // Convert from milliseconds to seconds
     }));
   } catch (err: any) {
     console.error(`Error scraping transcript for YouTube Video ${videoId}:`, err);

@@ -1,9 +1,3 @@
-import dotenv from "dotenv";
-import path from "path";
-
-// Load environment variables before exporting configuration
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
-dotenv.config();
 
 export const config = {
   port: Number(process.env.PORT) || 8000,
