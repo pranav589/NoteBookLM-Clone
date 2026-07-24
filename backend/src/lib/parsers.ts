@@ -57,14 +57,52 @@ export async function fetchYoutubeTranscript(url: string): Promise<{ text: strin
   }
 
   try {
-    const segments = await YoutubeTranscript.fetchTranscript(videoId);
-    return segments.map((item) => ({
-      text: item.text,
-      start: item.offset / 1000, // Convert from milliseconds to seconds
-    }));
+    const apiUrl = `https://youtube-transcript.ai/transcript/${videoId}.txt`;
+    const res = await fetch(apiUrl);
+    
+    if (!res.ok) {
+      throw new Error(`Failed to fetch from keyless API: ${res.statusText}`);
+    }
+
+    const text = await res.text();
+    const lines = text.split("\n");
+    const segments: { text: string; start: number }[] = [];
+
+    // Match lines like: [1:23] Some text or [1:02:30] Some text
+    const timestampRegex = /^\[(?:(\d+):)?(\d+):(\d{2})\]\s*(.+)$/;
+
+    for (const line of lines) {
+      const match = line.trim().match(timestampRegex);
+      if (match) {
+        const hours = match[1] ? parseInt(match[1], 10) : 0;
+        const minutes = parseInt(match[2], 10);
+        const seconds = parseInt(match[3], 10);
+        const content = match[4].trim();
+
+        const start = (hours * 3600) + (minutes * 60) + seconds;
+        segments.push({ text: content, start });
+      }
+    }
+
+    if (segments.length === 0) {
+      throw new Error("No timestamped segments could be parsed from the API response.");
+    }
+
+    console.log(`[YouTube] Successfully retrieved and parsed transcript for ${videoId} via youtube-transcript.ai`);
+    return segments;
   } catch (err: any) {
-    console.error(`Error scraping transcript for YouTube Video ${videoId}:`, err);
-    throw new Error(`Could not load YouTube transcript. Make sure captions/subtitles are enabled for this video.`);
+    console.warn(`[YouTube] youtube-transcript.ai failed for ${videoId}: ${err.message || err}. Falling back to scraper.`);
+
+    try {
+      const segments = await YoutubeTranscript.fetchTranscript(videoId);
+      return segments.map((item) => ({
+        text: item.text,
+        start: item.offset / 1000, // Convert from milliseconds to seconds
+      }));
+    } catch (fallbackErr: any) {
+      console.error(`Error scraping transcript for YouTube Video ${videoId}:`, fallbackErr);
+      throw new Error(`Could not load YouTube transcript. Make sure captions/subtitles are enabled for this video.`);
+    }
   }
 }
 

@@ -1,18 +1,12 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { notebookApi } from "../../../lib/notebook-api";
-import { useJobPoller } from "../../../hooks/useJobPoller";
 import type { Message } from "../../../lib/notebook-types";
 
 export function useChat(notebookId: string | undefined, notebookName?: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isQuerying, setIsQuerying] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
-
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
-  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
-
-  const { data: jobStatus } = useJobPoller(activeJobId);
 
   useEffect(() => {
     if (!notebookId) {
@@ -92,8 +86,20 @@ export function useChat(notebookId: string | undefined, notebookName?: string) {
 
     try {
       const response = await submitQueryMutation.mutateAsync(userMsg.content);
-      setActiveJobId(response.jobId);
-      setActiveMessageId(queryId);
+      
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === queryId
+            ? {
+                ...m,
+                status: "done",
+                content: response.result?.answer || "",
+                queries: response.result?.queries,
+                sources: response.result?.sources,
+              }
+            : m
+        )
+      );
     } catch (err: any) {
       setMessages((prev) =>
         prev.map((m) =>
@@ -101,52 +107,15 @@ export function useChat(notebookId: string | undefined, notebookName?: string) {
             ? {
                 ...m,
                 status: "failed",
-                content: `Error submitting query: ${err.message || err}`,
+                content: `RAG error: ${err.message || err}`,
               }
             : m
         )
       );
+    } finally {
       setIsQuerying(false);
     }
   };
-
-  useEffect(() => {
-    if (!jobStatus || !activeMessageId) return;
-
-    if (jobStatus.status === "completed") {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === activeMessageId
-            ? {
-                ...m,
-                status: "done",
-                content: jobStatus.result?.answer || "",
-                queries: jobStatus.result?.queries,
-                sources: jobStatus.result?.sources,
-              }
-            : m
-        )
-      );
-      setIsQuerying(false);
-      setActiveJobId(null);
-      setActiveMessageId(null);
-    } else if (jobStatus.status === "failed") {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === activeMessageId
-            ? {
-                ...m,
-                status: "failed",
-                content: `RAG error: ${jobStatus.error || "Execution failed"}`,
-              }
-            : m
-        )
-      );
-      setIsQuerying(false);
-      setActiveJobId(null);
-      setActiveMessageId(null);
-    }
-  }, [jobStatus, activeMessageId]);
 
   return {
     messages,

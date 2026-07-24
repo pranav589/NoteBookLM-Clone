@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
-import { Notebook, Notification } from "../lib/db";
+import { Notebook, Notification, ChatMessage } from "../lib/db";
 import { enqueueIndexingJob, enqueueQueryJob } from "../lib/queue";
 import { SourceService } from "../services/source.service";
 import { AIService } from "../services/ai.service";
 import { TTSService } from "../services/tts.service";
 import { sseManager } from "../lib/sse-manager";
+import { askAgent } from "../lib/langgraph-agent";
 
 export class AIController {
   // Legacy direct file indexing endpoint
@@ -41,7 +42,7 @@ export class AIController {
     }
   }
 
-  // Submit search query job
+  // Process search query directly (synchronous REST)
   public static async query(req: Request, res: Response, next: NextFunction) {
     try {
       const { query, notebookId } = req.body;
@@ -54,15 +55,28 @@ export class AIController {
         return res.status(400).json({ error: "Body must include a non-empty 'notebookId' string" });
       }
 
-      const job = await enqueueQueryJob({
-        query: query.trim(),
+      // Execute RAG agent directly
+      const result = await askAgent(query.trim(), notebookId.trim());
+
+      // Save User Question to DB
+      await ChatMessage.create({
         notebookId: notebookId.trim(),
+        role: "user",
+        content: query.trim(),
       });
 
-      return res.status(202).json({
-        message: "Query queued",
-        jobId: job.id,
-        poll: `/api/jobs/${job.id}`,
+      // Save Assistant Answer to DB
+      await ChatMessage.create({
+        notebookId: notebookId.trim(),
+        role: "assistant",
+        content: result.answer,
+        sources: result.sources,
+        queries: result.queries,
+      });
+
+      return res.status(200).json({
+        message: "Query processed successfully",
+        result,
       });
     } catch (err) {
       return next(err);

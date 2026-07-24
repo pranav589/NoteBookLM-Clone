@@ -16,14 +16,6 @@ export function useNotebooks() {
       queryKey: ["notebook", notebookId],
       queryFn: () => notebookApi.get(notebookId!),
       enabled: !!notebookId,
-      refetchInterval: (query) => {
-        const data = query.state.data;
-        const sources = data?.sources || [];
-        const hasIndexing = sources.some(
-          (s: any) => s.status === "indexing" || s.status === "uploading"
-        );
-        return hasIndexing ? 2500 : false;
-      },
     });
 
   const createMutation = useMutation({
