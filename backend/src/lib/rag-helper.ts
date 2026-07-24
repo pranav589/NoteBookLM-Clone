@@ -81,8 +81,57 @@ export const embeddings = new MistralDirectEmbeddings({
   model: config.openai.embeddingModel,
 });
 
+let payloadIndexesCreated = false;
+
+/**
+ * Helper to ensure payload keyword indexes for notebookId and sourceId.
+ * Essential for strict Qdrant Cloud cluster environments where filtered queries fail if the filter key is not indexed.
+ */
+export async function ensurePayloadIndexes() {
+  const fields = ["metadata.notebookId", "metadata.sourceId"];
+  const url = `${config.qdrant.url}/collections/${config.qdrant.collection}/index`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (config.qdrant.apiKey) {
+    headers["api-key"] = config.qdrant.apiKey;
+  }
+
+  for (const field of fields) {
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          field_name: field,
+          field_schema: "keyword",
+        }),
+      });
+      if (res.status === 404) {
+        // Collection does not exist yet (will be created when first source is indexed)
+        return;
+      }
+      if (!res.ok) {
+        console.warn(`[Qdrant] Warning: Failed to ensure payload index for ${field}: ${res.status} ${await res.text()}`);
+      } else {
+        console.log(`[Qdrant] Ensured payload index for ${field}`);
+      }
+    } catch (err) {
+      console.warn(`[Qdrant] Error ensuring payload index for ${field}:`, err);
+    }
+  }
+  payloadIndexesCreated = true;
+}
+
 // Helper to ensure Qdrant vector store
 export async function getVectorStore() {
+  if (!payloadIndexesCreated) {
+    // Attempt to ensure indexes in the background (does not block RAG startup)
+    ensurePayloadIndexes().catch((err) => {
+      console.warn("[Qdrant] Error in background index creation:", err);
+    });
+  }
+
   return QdrantVectorStore.fromExistingCollection(embeddings, {
     url: config.qdrant.url,
     apiKey: config.qdrant.apiKey,
@@ -278,6 +327,9 @@ export async function indexSource({
     apiKey: config.qdrant.apiKey,
     collectionName: config.qdrant.collection,
   });
+
+  // Ensure metadata payload indexes are created for filters (essential for Qdrant Cloud)
+  await ensurePayloadIndexes();
 
   return { chunks: docs.length, collection: config.qdrant.collection };
 }
