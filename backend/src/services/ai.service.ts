@@ -1,6 +1,70 @@
 import { ChatOpenAI } from "@langchain/openai";
+import { SystemMessage, HumanMessage } from "@langchain/core/messages";
+import { z } from "zod";
 import { config } from "../config";
 import { PodcastTurn, RoadmapResult, MindMapResult, MindMapNode } from "../types";
+import {
+  ROADMAP_SYSTEM_PROMPT,
+  PODCAST_SYSTEM_PROMPT,
+  MINDMAP_SYSTEM_PROMPT,
+} from "../lib/prompts";
+
+// ── ZOD SCHEMAS FOR STRUCTURED OUTPUT ────────────────────────────────────────
+
+const roadmapResultSchema = z.object({
+  title: z.string().describe("Title of the Learning Roadmap"),
+  description: z.string().describe("Brief overview of what the student will learn from these sources."),
+  nodes: z.array(
+    z.object({
+      id: z.string().describe("Unique node identifier"),
+      concept: z.string().describe("Concept Name"),
+      description: z.string().describe("Short explanation of the concept."),
+      sourceName: z.string().describe("Name of the source file or video"),
+      sourceType: z.enum(["youtube", "pdf", "url", "text", "transcript"]).describe("Source type"),
+      url: z.string().describe("Source URL"),
+      timestamp: z.number().describe("Exact timestamp or pageNumber of the source Item"),
+      reason: z.string().describe("Why this node comes first or why it is important")
+    })
+  )
+});
+
+const podcastScriptSchema = z.object({
+  turns: z.array(
+    z.object({
+      speaker: z.enum(["Host A", "Host B"]).describe("Host speaker name (Host A/Andrew or Host B/Emma)"),
+      text: z.string().describe("Dialogue text spoken by the host")
+    })
+  ).describe("Array of dialogue turns explaining the core concepts")
+});
+
+const mindMapResultSchema = z.object({
+  nodes: z.array(
+    z.object({
+      id: z.string().describe("Unique node identifier"),
+      label: z.string().describe("Concept Name"),
+      summary: z.string().describe("Brief 1-2 sentence explanation of the concept."),
+      description: z.string().describe("A clearer 2-4 sentence explanation a beginner can follow."),
+      keyPoints: z.array(z.string()).describe("List of key points"),
+      whyItMatters: z.string().describe("Why this concept is useful for understanding the topic."),
+      difficulty: z.enum(["intro", "intermediate", "advanced"]).describe("Difficulty level"),
+      example: z.string().optional().describe("Concrete example from sources"),
+      relatedQuestions: z.array(z.string()).describe("Natural questions a student could ask"),
+      sourceId: z.string().describe("Source ID from item"),
+      sourceName: z.string().describe("Exact source title"),
+      sourceType: z.enum(["youtube", "pdf", "url", "text", "transcript"]).describe("Source type"),
+      sourceLocation: z.number().describe("Source location (timestamp or pageNumber)")
+    })
+  ),
+  edges: z.array(
+    z.object({
+      id: z.string().describe("Unique edge identifier"),
+      source: z.string().describe("Source node ID"),
+      target: z.string().describe("Target node ID"),
+      label: z.string().describe("Relationship label"),
+      type: z.enum(["prerequisite", "related_to", "part_of", "example_of", "contrasts_with"]).describe("Edge type")
+    })
+  )
+});
 
 export class AIService {
   private static getModel(temperature: number): ChatOpenAI {
@@ -14,167 +78,43 @@ export class AIService {
     });
   }
 
-  private static cleanJsonOutput(rawText: string): string {
-    let cleanText = rawText.trim();
-    if (cleanText.startsWith("```json")) {
-      cleanText = cleanText.slice(7);
-    } else if (cleanText.startsWith("```")) {
-      cleanText = cleanText.slice(3);
-    }
-    if (cleanText.endsWith("```")) {
-      cleanText = cleanText.slice(0, -3);
-    }
-    cleanText = cleanText.trim();
-
-    // If still not plain JSON, extract the first {...} object via regex
-    if (!cleanText.startsWith("{") && !cleanText.startsWith("[")) {
-      const match = cleanText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-      if (match) {
-        cleanText = match[1];
-      }
-    }
-
-    return cleanText;
-  }
-
   public static async generateRoadmap(itemsText: string): Promise<RoadmapResult> {
     const model = this.getModel(0.3);
+    const structuredModel = model.withStructuredOutput(roadmapResultSchema);
 
-    const systemPrompt = `You are an expert learning tutor.
-Given the following list of indexed document/video fragments, create a personalized step-by-step learning roadmap of concepts found in these sources.
-Each learning step (node) MUST pinpoint the specific source, title, and timestamp/page number where it is explained so the student can directly open it to study.
-
-CRITICAL INSTRUCTION FOR TIMESTAMPS:
-- For YouTube videos and audio transcripts: You MUST copy the exact "timestamp" integer (in seconds) from the source Item that contains the concept.
-- For PDFs: You MUST copy the exact "pageNumber" integer from the source Item that contains the concept.
-- Do NOT guess, extrapolate, round, or invent timestamps/pageNumbers. The "timestamp" field in the output JSON for the node MUST match the source Item's location value EXACTLY.
-
-You MUST return the output as a valid JSON object matching this structure with NO extra text, markup blocks, or formatting tags:
-{
-  "title": "Title of the Learning Roadmap",
-  "description": "Brief overview of what the student will learn from these sources.",
-  "nodes": [
-    {
-      "id": "1",
-      "concept": "Concept Name",
-      "description": "Short explanation of the concept.",
-      "sourceName": "Name of the source file or video",
-      "sourceType": "youtube" | "pdf" | "url" | "text" | "transcript",
-      "url": "the source URL",
-      "timestamp": 120, // MUST match the exact timestamp or pageNumber of the source Item
-      "reason": "Why this node comes first or why it is important"
-    }
-  ]
-}
-Design a clear progression. Aim for exactly 4-6 roadmap steps.`;
-
-    const response = await model.invoke([
-      { role: "system", content: systemPrompt },
-      { role: "user", content: `Here are the indexed source materials:\n\n${itemsText}` },
+    const response = await structuredModel.invoke([
+      new SystemMessage(ROADMAP_SYSTEM_PROMPT),
+      new HumanMessage(`Here are the indexed source materials:\n\n${itemsText}`),
     ]);
 
-    const rawText = this.cleanJsonOutput(response.content as string);
-    return JSON.parse(rawText) as RoadmapResult;
+    return response as RoadmapResult;
   }
 
   public static async generatePodcastScript(fullContext: string): Promise<PodcastTurn[]> {
     const model = this.getModel(0.7);
+    const structuredModel = model.withStructuredOutput(podcastScriptSchema);
 
-    const systemPrompt = `You are a professional podcast scriptwriter.
-Given the following document context, generate a conversational podcast script between two hosts:
-- Host A (Male, name: Andrew): Enthusiastic, introduces the topic, asks insightful questions.
-- Host B (Female, name: Emma): Analytical, provides details, explains key concepts.
-The hosts should discuss and explain the concepts in the provided documents in a friendly, conversational manner.
-
-You MUST return the output as a valid JSON array of dialogue turns, with NO extra markdown tags, notes, or wrapper text:
-[
-  { "speaker": "Host A", "text": "Hello and welcome to the show! Today we are discussing..." },
-  { "speaker": "Host B", "text": "Thanks Andrew! Yes, and what's fascinating is..." }
-]
-Generate exactly 6-10 dialogue turns explaining the core concepts. Keep descriptions clear and accessible.`;
-
-    const response = await model.invoke([
-      { role: "system", content: systemPrompt },
-      { role: "user", content: `Here is the notebook document context:\n\n${fullContext}` },
+    const response = await structuredModel.invoke([
+      new SystemMessage(PODCAST_SYSTEM_PROMPT),
+      new HumanMessage(`Here is the notebook document context:\n\n${fullContext}`),
     ]);
 
-    const rawText = this.cleanJsonOutput(response.content as string);
-    return JSON.parse(rawText) as PodcastTurn[];
+    return response.turns as PodcastTurn[];
   }
 
   public static async generateMindMap(itemsText: string): Promise<MindMapResult> {
     const model = this.getModel(0.3);
+    const structuredModel = model.withStructuredOutput(mindMapResultSchema);
 
-    const systemPrompt = `You are an expert knowledge graph builder and educator.
-
-Given indexed document/video fragments, extract 8-15 key concepts and create a mind map showing their relationships. Write in plain language a student can understand quickly.
-
-CRITICAL REQUIREMENTS:
-1. Each concept MUST cite the exact source item, including:
-   - sourceName: The exact title from the source item
-   - sourceType: One of "youtube" | "pdf" | "url" | "text" | "transcript"
-   - sourceLocation: For PDFs use pageNumber, for videos use timestamp in seconds
-   
-2. DO NOT guess or invent locations - copy the exact value from the source item metadata
-
-3. Create meaningful relationships between concepts using these edge types:
-   - "prerequisite": Concept A must be understood before concept B
-   - "related_to": Concepts share thematic connections
-   - "part_of": Concept A is a component of concept B
-   - "example_of": Concept A exemplifies concept B
-   - "contrasts_with": Concepts present opposing viewpoints
-
-4. For each concept provide teaching-card fields:
-   - summary: max 200 characters, 1-2 sentences (shown on the graph)
-   - description: 2-4 sentence plain-language explanation
-   - keyPoints: 3-5 short bullet strings
-   - whyItMatters: one sentence on why a learner should care
-   - difficulty: one of "intro" | "intermediate" | "advanced"
-   - example: optional concrete example grounded in the sources
-   - relatedQuestions: 2-3 natural questions a student could ask about this concept using the notebook sources
-
-5. Return ONLY valid JSON matching this structure with NO markdown code blocks:
-{
-  "nodes": [
-    {
-      "id": "1",
-      "label": "Concept Name",
-      "summary": "Brief 1-2 sentence explanation of the concept.",
-      "description": "A clearer 2-4 sentence explanation a beginner can follow.",
-      "keyPoints": ["Point one", "Point two", "Point three"],
-      "whyItMatters": "Why this concept is useful for understanding the topic.",
-      "difficulty": "intro",
-      "example": "A concrete example from the sources.",
-      "relatedQuestions": ["What is X in simple terms?", "How does X relate to Y?"],
-      "sourceId": "source-id-from-item",
-      "sourceName": "Exact source title",
-      "sourceType": "youtube",
-      "sourceLocation": 120
-    }
-  ],
-  "edges": [
-    {
-      "id": "e1-2",
-      "source": "1",
-      "target": "2",
-      "label": "builds upon",
-      "type": "prerequisite"
-    }
-  ]
-}
-
-Design a coherent graph structure. Aim for 8-15 nodes with 10-20 edges creating a connected graph.`;
-
-    const response = await model.invoke([
-      { role: "system", content: systemPrompt },
-      { role: "user", content: `Here are the indexed source materials:\n\n${itemsText}` },
+    const response = await structuredModel.invoke([
+      new SystemMessage(MINDMAP_SYSTEM_PROMPT),
+      new HumanMessage(`Here are the indexed source materials:\n\n${itemsText}`),
     ]);
 
-    const rawText = this.cleanJsonOutput(response.content as string);
-    const parsed = JSON.parse(rawText) as MindMapResult;
+    const parsed = response as MindMapResult;
 
     // Cap at 20 most important concepts for performance
-    if (parsed.nodes?.length > 20) {
+    if (parsed.nodes && parsed.nodes.length > 20) {
       const keptIds = new Set(parsed.nodes.slice(0, 20).map((n) => n.id));
       parsed.nodes = parsed.nodes.slice(0, 20);
       parsed.edges = (parsed.edges || []).filter(

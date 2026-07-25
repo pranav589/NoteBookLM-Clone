@@ -4,15 +4,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
-  Handle,
   MarkerType,
-  Position,
   type Edge,
   type Node,
-  type NodeProps,
   type NodeTypes,
 } from "reactflow";
-import dagre from "dagre";
 import { createPortal } from "react-dom";
 import {
   Loader2,
@@ -27,10 +23,18 @@ import "reactflow/dist/style.css";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { MindMap, MindMapNode, SourceType } from "../../lib/notebook-types";
 import { ConceptDetailPanel } from "./ConceptDetailPanel";
+import { ConceptNode } from "./ConceptNode";
+import { MindMapSkeleton } from "./MindMapSkeleton";
+import { MindMapEmpty } from "./MindMapEmpty";
+import { MindMapTextView } from "./MindMapTextView";
+import {
+  shouldUseHierarchical,
+  getHierarchicalLayout,
+  getForceLayout,
+} from "./MindMapUtils";
 
 interface MindMapViewProps {
   mindMap: MindMap | null;
@@ -50,110 +54,7 @@ interface ConceptNodeData {
   selected: boolean;
 }
 
-const NODE_WIDTH = 200;
-const NODE_HEIGHT = 72;
-
-function getNodeColor(sourceType: SourceType) {
-  switch (sourceType) {
-    case "youtube":
-      return "border-red-400 dark:border-red-900 bg-red-50/90 dark:bg-red-950/20 text-foreground hover:border-red-500";
-    case "pdf":
-      return "border-amber-400 dark:border-amber-900 bg-amber-50/90 dark:bg-amber-950/20 text-foreground hover:border-accent";
-    default:
-      return "border-blue-400 dark:border-blue-900 bg-blue-50/90 dark:bg-blue-950/20 text-foreground hover:border-blue-500";
-  }
-}
-
-const ConceptNode = React.memo(function ConceptNode({
-  data,
-}: NodeProps<ConceptNodeData>) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Concept: ${data.label}. ${data.summary}. From ${data.sourceName}.`}
-      className={cn(
-        "px-4 py-3 rounded-[20px] border-2 shadow-xs transition-all duration-200 cursor-pointer min-w-[160px] max-w-[200px]",
-        "hover:shadow-level1 hover:-translate-y-0.5",
-        getNodeColor(data.sourceType),
-        (data.selected || data.highlighted) &&
-          "ring-2 ring-accent ring-offset-2 dark:ring-offset-stone-900 -translate-y-0.5 shadow-level1"
-      )}
-    >
-      <Handle type="target" position={Position.Top} className="!bg-accent !w-2 !h-2 !border-0" />
-      <div className="text-xs font-bold text-foreground leading-snug text-center line-clamp-2">
-        {data.label}
-      </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-accent !w-2 !h-2 !border-0" />
-    </div>
-  );
-});
-
 const nodeTypes: NodeTypes = { concept: ConceptNode };
-
-function shouldUseHierarchical(mindMap: MindMap): boolean {
-  if (mindMap.nodes.length <= 10) return true;
-  const hierarchicalTypes = new Set(["prerequisite", "part_of"]);
-  const hierarchicalCount = mindMap.edges.filter((e) => hierarchicalTypes.has(e.type)).length;
-  return hierarchicalCount >= mindMap.edges.length / 2;
-}
-
-function getHierarchicalLayout(nodes: Node[], edges: Edge[], direction = "TB") {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({ rankdir: direction, nodesep: 80, ranksep: 120 });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  return nodes.map((node) => {
-    const pos = dagreGraph.node(node.id);
-    return {
-      ...node,
-      position: {
-        x: pos.x - NODE_WIDTH / 2,
-        y: pos.y - NODE_HEIGHT / 2,
-      },
-    };
-  });
-}
-
-function getForceLayout(nodes: Node[]) {
-  const count = nodes.length;
-  const radius = Math.max(220, count * 28);
-  const cx = 400;
-  const cy = 300;
-
-  return nodes.map((node, i) => {
-    const angle = (2 * Math.PI * i) / count - Math.PI / 2;
-    return {
-      ...node,
-      position: {
-        x: cx + radius * Math.cos(angle) - NODE_WIDTH / 2,
-        y: cy + radius * Math.sin(angle) - NODE_HEIGHT / 2,
-      },
-    };
-  });
-}
-
-function formatLocation(node: MindMapNode): string {
-  if (node.sourceType === "youtube" || node.sourceType === "transcript") {
-    const mins = Math.floor(node.sourceLocation / 60);
-    const secs = Math.floor(node.sourceLocation % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  }
-  if (node.sourceType === "pdf") {
-    return `Page ${node.sourceLocation || 1}`;
-  }
-  return node.sourceLocation ? `Loc ${node.sourceLocation}` : "Source";
-}
 
 export function MindMapView({
   mindMap,
@@ -324,133 +225,16 @@ export function MindMapView({
   );
 
   if (isGenerating) {
-    return (
-      <div className="flex-1 p-6 bg-background overflow-auto">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="border-b border-border pb-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <Network className="w-5 h-5 text-accent animate-pulse" />
-              <Skeleton className="h-5 w-52 bg-muted" />
-            </div>
-            <Skeleton className="h-3 w-80 bg-muted" />
-            <p className="text-xs text-muted-foreground font-semibold flex items-center gap-2 pt-1">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />
-              Extracting concepts and relationships with AI...
-            </p>
-          </div>
-
-          {/* Interactive ReactFlow Simulation Viewport */}
-          <div
-            className="relative w-full h-[380px] rounded-[20px] border border-border bg-card overflow-hidden shadow-xs"
-            style={{
-              backgroundImage: isDark
-                ? "radial-gradient(#2e2e2e 1.5px, transparent 1.5px)"
-                : "radial-gradient(#e7e5e4 1.5px, transparent 1.5px)",
-              backgroundSize: "16px 16px",
-            }}
-          >
-            {/* SVG Connecting Edges */}
-            <svg className="absolute inset-0 pointer-events-none w-full h-full">
-              <defs>
-                <marker
-                  id="arrow"
-                  viewBox="0 0 10 10"
-                  refX="6"
-                  refY="5"
-                  markerWidth="6"
-                  markerHeight="6"
-                  orient="auto-start-reverse"
-                >
-                  <path d="M 0 2 L 10 5 L 0 8 z" fill="#CF4500" />
-                </marker>
-              </defs>
-              {/* Dotted paths simulating animated edges */}
-              <path
-                d="M 400 128 L 400 194 L 220 194 L 220 260"
-                stroke="#CF4500"
-                strokeWidth="2"
-                strokeDasharray="4 4"
-                fill="none"
-                markerEnd="url(#arrow)"
-                className="opacity-70"
-              />
-              <path
-                d="M 400 128 L 400 194 L 580 194 L 580 260"
-                stroke="#CF4500"
-                strokeWidth="2"
-                strokeDasharray="4 4"
-                fill="none"
-                markerEnd="url(#arrow)"
-                className="opacity-70"
-              />
-            </svg>
-
-            {/* Parent Concept Node Skeleton */}
-            <div className="absolute left-[calc(50%-80px)] top-[60px] w-[160px] h-[68px] bg-blue-500/10 dark:bg-blue-950/20 border-2 border-blue-300 dark:border-blue-900 rounded-[20px] p-4 flex flex-col justify-center items-center shadow-xs animate-pulse z-10">
-              {/* Node handles */}
-              <div className="absolute -top-1 w-2 h-2 rounded-full bg-accent" />
-              <Skeleton className="h-3.5 w-5/6 bg-muted-foreground/30" />
-              <div className="absolute -bottom-1 w-2 h-2 rounded-full bg-accent" />
-            </div>
-
-            {/* Child Concept Node Skeleton 1 (YouTube) */}
-            <div className="absolute left-[calc(27.5%-80px)] top-[260px] w-[160px] h-[68px] bg-red-500/10 dark:bg-red-950/20 border-2 border-red-300 dark:border-red-900 rounded-[20px] p-4 flex flex-col justify-center items-center shadow-xs animate-pulse z-10">
-              <div className="absolute -top-1 w-2 h-2 rounded-full bg-accent" />
-              <Skeleton className="h-3.5 w-3/4 bg-muted-foreground/30" />
-              <div className="absolute -bottom-1 w-2 h-2 rounded-full bg-accent" />
-            </div>
-
-            {/* Child Concept Node Skeleton 2 (PDF) */}
-            <div className="absolute left-[calc(72.5%-80px)] top-[260px] w-[160px] h-[68px] bg-amber-500/10 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-900 rounded-[20px] p-4 flex flex-col justify-center items-center shadow-xs animate-pulse z-10">
-              <div className="absolute -top-1 w-2 h-2 rounded-full bg-accent" />
-              <Skeleton className="h-3.5 w-4/5 bg-muted-foreground/30" />
-              <div className="absolute -bottom-1 w-2 h-2 rounded-full bg-accent" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <MindMapSkeleton isDark={isDark} />;
   }
 
   if (!mindMap) {
     return (
-      <div className="flex-1 p-6 bg-background overflow-auto">
-        <div className="max-w-md mx-auto text-center py-12 space-y-4">
-          <div className="bg-accent/10 border border-accent/20 p-4 rounded-full w-fit mx-auto">
-            <Network className="w-10 h-10 text-accent" />
-          </div>
-          <h3 className="text-base font-bold text-foreground">Interactive Concept Mind Map</h3>
-          <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mx-auto font-semibold">
-            Visualize how concepts interconnect across your PDFs, videos, and documents as an
-            interactive knowledge graph.
-          </p>
-          <Button
-            disabled={isGenerating || !hasCompletedSources}
-            onClick={onGenerateMindMap}
-            aria-label="Generate mind map from notebook sources"
-            title={
-              !hasCompletedSources
-                ? "Wait for source indexing to complete"
-                : "Generate Mind Map"
-            }
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs py-2 px-6 cursor-pointer shadow-xs rounded-[20px]"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
-                Building graph...
-              </>
-            ) : (
-              "Generate Mind Map"
-            )}
-          </Button>
-          {!hasCompletedSources && (
-            <p className="text-[10px] text-muted-foreground/60 font-semibold">
-              Upload and wait for source indexing to complete first.
-            </p>
-          )}
-        </div>
-      </div>
+      <MindMapEmpty
+        isGenerating={isGenerating}
+        onGenerateMindMap={onGenerateMindMap}
+        hasCompletedSources={hasCompletedSources}
+      />
     );
   }
 
@@ -570,77 +354,11 @@ export function MindMapView({
 
       <div className="flex-1 flex min-h-0 relative overflow-hidden">
         {showTextView ? (
-          <div
-            role="region"
-            aria-label="Mind map text view"
-            className="flex-1 overflow-auto p-6"
-          >
-            <div className="max-w-2xl mx-auto space-y-6">
-              <section>
-                <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-3">
-                  Concepts
-                </h4>
-                <ul className="space-y-3">
-                  {mindMap.nodes.map((node) => (
-                    <li
-                      key={node.id}
-                      className={cn(
-                        "bg-card border rounded-[20px] p-4 shadow-xs transition-colors",
-                        selectedNode?.id === node.id
-                          ? "border-accent"
-                          : "border-border"
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setSelectedNode(node)}
-                        className="text-left w-full cursor-pointer"
-                      >
-                        <span className="text-sm font-bold text-foreground">{node.label}</span>
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed font-semibold">
-                          {node.description || node.summary}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-2 font-bold">
-                          Source: {node.sourceName} · {formatLocation(node)}
-                        </p>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-              <section>
-                <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-3">
-                  Relationships
-                </h4>
-                <ul className="space-y-2">
-                  {mindMap.edges.map((edge) => {
-                    const sourceLabel =
-                      mindMap.nodes.find((n) => n.id === edge.source)?.label || edge.source;
-                    const targetLabel =
-                      mindMap.nodes.find((n) => n.id === edge.target)?.label || edge.target;
-                    return (
-                      <li
-                        key={edge.id}
-                        className="text-xs text-muted-foreground bg-card border border-border rounded-[15px] px-3.5 py-2 flex items-center justify-between"
-                      >
-                        <div>
-                          <span className="font-bold text-foreground">{sourceLabel}</span>{" "}
-                          <span className="text-accent italic font-semibold">{edge.label}</span>{" "}
-                          <span className="font-bold text-foreground">{targetLabel}</span>
-                        </div>
-                        <Badge
-                          variant="secondary"
-                          className="text-[8px] bg-muted text-muted-foreground border-border rounded-full py-0 px-2"
-                        >
-                          {edge.type}
-                        </Badge>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            </div>
-          </div>
+          <MindMapTextView
+            mindMap={mindMap}
+            selectedNode={selectedNode}
+            setSelectedNode={setSelectedNode}
+          />
         ) : (
           <div className="flex-1 min-h-0 relative">
             <ReactFlow

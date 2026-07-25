@@ -18,12 +18,16 @@ const BASE_RETRY_DELAY_MS = 1_000; // start at 1s
 
 export function useSSE(notebookId: string | undefined, handlers: SSEHandlers) {
   const handlersRef = useRef(handlers);
-  handlersRef.current = handlers;
+  useEffect(() => {
+    handlersRef.current = handlers;
+  });
 
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const isUnmountedRef = useRef(false);
+
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     if (isUnmountedRef.current || !notebookId) return;
@@ -92,9 +96,13 @@ export function useSSE(notebookId: string | undefined, handlers: SSEHandlers) {
         `SSE connection closed for notebook ${notebookId}. Reconnecting in ${delay / 1000}s (attempt ${retryCountRef.current})...`
       );
 
-      retryTimerRef.current = setTimeout(connect, delay);
+      retryTimerRef.current = setTimeout(() => connectRef.current(), delay);
     };
   }, [notebookId]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     if (!notebookId) return;

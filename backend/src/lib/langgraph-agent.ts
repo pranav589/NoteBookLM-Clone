@@ -1,10 +1,11 @@
 import { MessagesAnnotation, StateGraph } from "@langchain/langgraph";
 import { MongoDBSaver } from "@langchain/langgraph-checkpoint-mongodb";
 import { ChatOpenAI } from "@langchain/openai";
-import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
+import { HumanMessage, AIMessage, SystemMessage, BaseMessage } from "@langchain/core/messages";
 import mongoose from "mongoose";
 import { retrieveChunks } from "./rag-helper";
 import { config } from "./config";
+import { getRagSystemPrompt } from "./prompts";
 
 let checkpointer: MongoDBSaver | null = null;
 
@@ -59,23 +60,11 @@ async function callAgent(state: typeof MessagesAnnotation.State, runConfig?: any
     },
   });
 
-  // Construct system prompt with grounding context
-  const systemPrompt =
-    "You are a helpful assistant. Answer the user's question using ONLY the provided context. " +
-    "You MUST cite the source inside your answer using brackets like [Source 1], [Source 2], etc. " +
-    "whenever you state a fact derived from it. Try to place these citations inline at the end of relevant sentences. " +
-    "Do not formulate the answer without inline citations. If the answer cannot be found in the context, say: " +
-    "'I couldn't find information about this in the uploaded documents.' and do not cite anything. Be concise.\n\n" +
-    `Context:\n${context}`;
-
   // Form message sequence for ChatOpenAI API
-  const apiMessages = [
-    { role: "system", content: systemPrompt },
-    ...messages.slice(0, -1).map((m: BaseMessage) => ({
-      role: m.getType() === "human" ? "user" : "assistant",
-      content: m.content as string,
-    })),
-    { role: "user", content: query },
+  const apiMessages: BaseMessage[] = [
+    new SystemMessage(getRagSystemPrompt(context)),
+    ...messages.slice(0, -1),
+    new HumanMessage(query),
   ];
 
   const response = await model.invoke(apiMessages);

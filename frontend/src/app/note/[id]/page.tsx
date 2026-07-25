@@ -1,7 +1,7 @@
 "use client";
 
 import React, { use } from "react";
-import { NotebookWorkspace } from "@/components/NotebookWorkspace";
+import { NotebookWorkspace } from "./components/NotebookWorkspace";
 
 interface NotebookPageProps {
   params: Promise<{ id: string }>;

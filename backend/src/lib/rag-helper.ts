@@ -1,143 +1,20 @@
-
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { Document } from "@langchain/core/documents";
 import { QdrantVectorStore } from "@langchain/qdrant";
 import { ChatOpenAI } from "@langchain/openai";
-import { Embeddings, type EmbeddingsParams } from "@langchain/core/embeddings";
+import { SystemMessage, HumanMessage, BaseMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { promises as fs } from "fs";
 import { config } from "./config";
 import { scrapeWebsite, fetchYoutubeTranscript, parseVtt } from "./parsers";
-
-export class MistralDirectEmbeddings extends Embeddings {
-  apiKey: string;
-  baseURL: string;
-  model: string;
-
-  constructor(fields: EmbeddingsParams & { apiKey?: string; baseURL?: string; model?: string }) {
-    super(fields);
-    this.apiKey = fields.apiKey || "";
-    this.baseURL = fields.baseURL || "https://api.mistral.ai/v1";
-    this.model = fields.model || "mistral-embed";
-  }
-
-  async embedDocuments(documents: string[]): Promise<number[][]> {
-    const batchSize = 32;
-    const results: number[][] = [];
-    
-    for (let i = 0; i < documents.length; i += batchSize) {
-      const batch = documents.slice(i, i + batchSize);
-      const res = await fetch(`${this.baseURL}/embeddings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: this.model,
-          input: batch,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Mistral API error: ${res.status} ${await res.text()}`);
-      }
-
-      const data = (await res.json()) as any;
-      const embeddings = data.data.map((item: any) => item.embedding);
-      results.push(...embeddings);
-    }
-
-    return results;
-  }
-
-  async embedQuery(document: string): Promise<number[]> {
-    const res = await fetch(`${this.baseURL}/embeddings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.model,
-        input: [document],
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Mistral API error: ${res.status} ${await res.text()}`);
-    }
-
-    const data = (await res.json()) as any;
-    return data.data[0].embedding;
-  }
-}
-
-// Initialize Custom Mistral Embeddings
-export const embeddings = new MistralDirectEmbeddings({
-  apiKey: config.openai.apiKey,
-  baseURL: config.openai.baseURL,
-  model: config.openai.embeddingModel,
-});
-
-let payloadIndexesCreated = false;
-
-/**
- * Helper to ensure payload keyword indexes for notebookId and sourceId.
- * Essential for strict Qdrant Cloud cluster environments where filtered queries fail if the filter key is not indexed.
- */
-export async function ensurePayloadIndexes() {
-  const fields = ["metadata.notebookId", "metadata.sourceId", "metadata.userId"];
-  const url = `${config.qdrant.url}/collections/${config.qdrant.collection}/index`;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (config.qdrant.apiKey) {
-    headers["api-key"] = config.qdrant.apiKey;
-  }
-
-  for (const field of fields) {
-    try {
-      const res = await fetch(url, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({
-          field_name: field,
-          field_schema: "keyword",
-        }),
-      });
-      if (res.status === 404) {
-        // Collection does not exist yet (will be created when first source is indexed)
-        return;
-      }
-      if (!res.ok) {
-        console.warn(`[Qdrant] Warning: Failed to ensure payload index for ${field}: ${res.status} ${await res.text()}`);
-      } else {
-        console.log(`[Qdrant] Ensured payload index for ${field}`);
-      }
-    } catch (err) {
-      console.warn(`[Qdrant] Error ensuring payload index for ${field}:`, err);
-    }
-  }
-  payloadIndexesCreated = true;
-}
-
-// Helper to ensure Qdrant vector store
-export async function getVectorStore() {
-  if (!payloadIndexesCreated) {
-    // Attempt to ensure indexes in the background (does not block RAG startup)
-    ensurePayloadIndexes().catch((err) => {
-      console.warn("[Qdrant] Error in background index creation:", err);
-    });
-  }
-
-  return QdrantVectorStore.fromExistingCollection(embeddings, {
-    url: config.qdrant.url,
-    apiKey: config.qdrant.apiKey,
-    collectionName: config.qdrant.collection,
-  });
-}
+import { embeddings } from "./embeddings";
+import { getVectorStore, ensurePayloadIndexes } from "./qdrant-client";
+import {
+  QUERY_REWRITING_SYSTEM_PROMPT,
+  HYDE_SYSTEM_PROMPT,
+  RAG_SYSTEM_PROMPT_BASE,
+} from "./prompts";
 
 /**
  * Full indexing pipeline for a notebook knowledge source:
@@ -224,7 +101,7 @@ export async function indexSource({
   } else if (type === "youtube") {
     if (!url) throw new Error("Missing URL for YouTube video");
     const segments = await fetchYoutubeTranscript(url);
-    
+
     let currentChunkText = "";
     let currentChunkStart = 0;
     let chunkCount = 0;
@@ -233,7 +110,7 @@ export async function indexSource({
       if (currentChunkText.length === 0) {
         currentChunkStart = segment.start;
       }
-      
+
       const cleanText = segment.text.replace(/&#39;/g, "'").replace(/&quot;/g, '"');
       currentChunkText += " " + cleanText;
 
@@ -331,7 +208,7 @@ export async function indexSource({
   }
 
   // Save to Qdrant
-  const vectorStore = await QdrantVectorStore.fromDocuments(docs, embeddings, {
+  await QdrantVectorStore.fromDocuments(docs, embeddings, {
     url: config.qdrant.url,
     apiKey: config.qdrant.apiKey,
     collectionName: config.qdrant.collection,
@@ -365,7 +242,6 @@ const queryRewritingSchema = z.object({
  */
 export async function queryRewriting(query: string) {
   const model = new ChatOpenAI({
-    // apiKey: config.openai.apiKey,
     model: config.openai.chatModel,
     temperature: 0.2,
     configuration: {
@@ -378,16 +254,8 @@ export async function queryRewriting(query: string) {
 
   try {
     const result = await structuredModel.invoke([
-      {
-        role: "system",
-        content:
-          "You are a query understanding assistant for a retrieval system. " +
-          "Given a user's question, produce query variants that help retrieve relevant documents. " +
-          "Apply three techniques: (1) step-back prompting -> one broader background question; " +
-          "(2) query rewriting -> fix typos/grammar and make the query explicit and self-contained; " +
-          "(3) sub-query decomposition -> break the query into exactly 3 focused sub-questions.",
-      },
-      { role: "user", content: query },
+      new SystemMessage(QUERY_REWRITING_SYSTEM_PROMPT),
+      new HumanMessage(query),
     ]);
 
     return {
@@ -410,7 +278,6 @@ export async function queryRewriting(query: string) {
  */
 export async function hydeDocument(query: string): Promise<string> {
   const model = new ChatOpenAI({
-    // apiKey: config.openai.apiKey,
     model: config.openai.chatModel,
     temperature: 0.3,
     configuration: {
@@ -420,25 +287,11 @@ export async function hydeDocument(query: string): Promise<string> {
   });
 
   const response = await model.invoke([
-    {
-      role: "system",
-      content:
-        "You are an expert writer. Write a concise, factual passage (3-5 sentences) that directly answers " +
-        "the user's question, as if it were an excerpt from a relevant reference document. " +
-        "Write confidently in a neutral, encyclopedic tone. Do not add disclaimers or say you are unsure.",
-    },
-    { role: "user", content: query },
+    new SystemMessage(HYDE_SYSTEM_PROMPT),
+    new HumanMessage(query),
   ]);
 
   return (response.content as string).trim() || "";
-}
-
-interface RrfHit {
-  id: string;
-  text: string;
-  source: string | null;
-  chunkIndex: number | null;
-  score: number;
 }
 
 /**
@@ -455,7 +308,7 @@ function reciprocalRankFusion(
       // LangChain vector store results are [Document, score]
       const doc = h[0] || h;
       const rawScore = h[1] ?? 0;
-      
+
       const docId = doc.metadata?.id || doc.pageContent.slice(0, 50) + doc.metadata?.chunkIndex;
       const rank = index + 1; // 1-based
       const contribution = 1 / (k + rank);
@@ -551,11 +404,11 @@ export async function retrieveChunks(query: string, notebookId?: string, userId?
       if (scrollRes.ok) {
         const scrollData = (await scrollRes.json()) as any;
         const points = scrollData.result?.points || [];
-        
+
         for (const p of points) {
           const docId = p.id;
           const text = p.payload?.content || p.payload?.page_content || p.payload?.text || "";
-          
+
           // Check if this chunk is already retrieved
           const isDup = chunks.some(c => c.id === docId || c.text === text);
           if (!isDup) {
@@ -620,19 +473,8 @@ export async function answerQuery(query: string, notebookId?: string) {
   });
 
   const response = await model.invoke([
-    {
-      role: "system",
-      content:
-        "You are a helpful assistant. Answer the user's question using ONLY the provided context. " +
-        "You MUST cite the source inside your answer using brackets like [Source 1], [Source 2], etc. " +
-        "whenever you state a fact derived from it. Try to place these citations inline at the end of relevant sentences. " +
-        "Do not formulate the answer without inline citations. If the answer cannot be found in the context, say: " +
-        "'I couldn't find information about this in the uploaded documents.' and do not cite anything. Be concise.",
-    },
-    {
-      role: "user",
-      content: `Context:\n${context}\n\nQuestion: ${query}`,
-    },
+    new SystemMessage(RAG_SYSTEM_PROMPT_BASE),
+    new HumanMessage(`Context:\n${context}\n\nQuestion: ${query}`),
   ]);
 
   return {
@@ -651,51 +493,3 @@ export async function answerQuery(query: string, notebookId?: string) {
     })),
   };
 }
-
-/**
- * Deletes all points in Qdrant matching a filter query (e.g. metadata.notebookId or metadata.sourceId)
- */
-async function deletePointsByFilter(filter: any) {
-  const url = `${config.qdrant.url}/collections/${config.qdrant.collection}/points/delete`;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (config.qdrant.apiKey) {
-    headers["api-key"] = config.qdrant.apiKey;
-  }
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ filter }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed to delete Qdrant points: ${res.status} ${await res.text()}`);
-  }
-  return res.json();
-}
-
-export async function deleteNotebookVectors(notebookId: string) {
-  const filter = {
-    must: [
-      {
-        key: "metadata.notebookId",
-        match: { value: notebookId },
-      },
-    ],
-  };
-  return deletePointsByFilter(filter);
-}
-
-export async function deleteSourceVectors(sourceId: string) {
-  const filter = {
-    must: [
-      {
-        key: "metadata.sourceId",
-        match: { value: sourceId },
-      },
-    ],
-  };
-  return deletePointsByFilter(filter);
-}
-

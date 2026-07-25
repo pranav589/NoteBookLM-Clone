@@ -82,10 +82,7 @@ function LoginContent() {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="text-[10px] text-muted-foreground font-semibold z-10">
-          © 2026 NoteBookLM Studio. Secured by industry-standard Google OAuth.
-        </div>
+      
       </div>
 
       {/* Right side: Authentication Card */}

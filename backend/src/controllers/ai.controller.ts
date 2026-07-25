@@ -10,7 +10,7 @@ import { askAgent } from "../lib/langgraph-agent";
 
 export class AIController {
   // Legacy direct file indexing endpoint
-  public static async indexLegacy(req: Request, res: Response, next: NextFunction) {
+  public static async indexLegacy(req: any, res: Response, next: NextFunction) {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No PDF file uploaded (field: 'file')" });
@@ -20,9 +20,12 @@ export class AIController {
         return res.status(400).json({ error: "Only PDF files are allowed" });
       }
 
+      const userId = req.user?.id || "legacy-user";
+
       const job = await enqueueIndexingJob({
         sourceId: "legacy-direct-upload",
         notebookId: "legacy-direct-upload",
+        userId,
         type: "pdf",
         filePath: req.file.path,
         name: req.file.originalname,

@@ -4,7 +4,7 @@ import path from "path";
 import crypto from "crypto";
 import { Source, ISource } from "../lib/db";
 import { enqueueIndexingJob } from "../lib/queue";
-import { deleteSourceVectors } from "../lib/rag-helper";
+import { deleteSourceVectors } from "../lib/qdrant-client";
 import { config } from "../config";
 import { uploadDir } from "../middleware/upload.middleware";
 import { SourceType } from "../types";

@@ -6,7 +6,8 @@
     "dev": "tsx watch src/server.ts",
     "worker": "tsx -r dotenv/config src/workers/rag-worker.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "lint": "eslint src"
   },
   "dependencies": {
     "@langchain/community": "^1.1.29",
@@ -40,6 +41,9 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^20",
     "@types/pdf-parse": "^1.1.5",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "eslint": "^10.8.0",
     "tsx": "^4.23.1",
     "typescript": "^5"
   }
