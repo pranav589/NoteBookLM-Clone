@@ -88,7 +88,7 @@ let payloadIndexesCreated = false;
  * Essential for strict Qdrant Cloud cluster environments where filtered queries fail if the filter key is not indexed.
  */
 export async function ensurePayloadIndexes() {
-  const fields = ["metadata.notebookId", "metadata.sourceId"];
+  const fields = ["metadata.notebookId", "metadata.sourceId", "metadata.userId"];
   const url = `${config.qdrant.url}/collections/${config.qdrant.collection}/index`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -146,6 +146,7 @@ export async function getVectorStore() {
 export async function indexSource({
   sourceId,
   notebookId,
+  userId,
   type,
   filePath,
   url,
@@ -153,6 +154,7 @@ export async function indexSource({
 }: {
   sourceId: string;
   notebookId: string;
+  userId: string;
   type: "pdf" | "text" | "url" | "youtube" | "transcript";
   filePath?: string;
   url?: string;
@@ -176,6 +178,7 @@ export async function indexSource({
         metadata: {
           notebookId,
           sourceId,
+          userId,
           sourceName: name,
           sourceType: "pdf",
           chunkIndex: i,
@@ -193,6 +196,7 @@ export async function indexSource({
         metadata: {
           notebookId,
           sourceId,
+          userId,
           sourceName: name,
           sourceType: "text",
           chunkIndex: i,
@@ -209,6 +213,7 @@ export async function indexSource({
         metadata: {
           notebookId,
           sourceId,
+          userId,
           sourceName: name,
           sourceType: "url",
           url,
@@ -239,6 +244,7 @@ export async function indexSource({
             metadata: {
               notebookId,
               sourceId,
+              userId,
               sourceName: name,
               sourceType: "youtube",
               url,
@@ -258,6 +264,7 @@ export async function indexSource({
           metadata: {
             notebookId,
             sourceId,
+            userId,
             sourceName: name,
             sourceType: "youtube",
             url,
@@ -289,6 +296,7 @@ export async function indexSource({
             metadata: {
               notebookId,
               sourceId,
+              userId,
               sourceName: name,
               sourceType: "transcript",
               timestamp: Math.floor(currentChunkStart),
@@ -307,6 +315,7 @@ export async function indexSource({
           metadata: {
             notebookId,
             sourceId,
+            userId,
             sourceName: name,
             sourceType: "transcript",
             timestamp: Math.floor(currentChunkStart),
@@ -477,7 +486,7 @@ function reciprocalRankFusion(
 /**
  * Retrieve chunks using Multi-query expansion and RRF
  */
-export async function retrieveChunks(query: string, notebookId?: string) {
+export async function retrieveChunks(query: string, notebookId?: string, userId?: string) {
   const [{ stepBack, rewritten, subQueries }, hyde] = await Promise.all([
     queryRewriting(query),
     hydeDocument(query),
@@ -492,16 +501,14 @@ export async function retrieveChunks(query: string, notebookId?: string) {
 
   const vectorStore = await getVectorStore();
 
-  const filter = notebookId
-    ? {
-        must: [
-          {
-            key: "metadata.notebookId",
-            match: { value: notebookId },
-          },
-        ],
-      }
-    : undefined;
+  const mustClauses: any[] = [];
+  if (notebookId) {
+    mustClauses.push({ key: "metadata.notebookId", match: { value: notebookId } });
+  }
+  if (userId) {
+    mustClauses.push({ key: "metadata.userId", match: { value: userId } });
+  }
+  const filter = mustClauses.length > 0 ? { must: mustClauses } : undefined;
 
   // Search in parallel for all variants
   const resultsPerQuery = await Promise.all(

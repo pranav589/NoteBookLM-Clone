@@ -8,11 +8,13 @@ export interface INotebook extends Document {
   roadmapStatus?: "idle" | "generating";
   podcastStatus?: "idle" | "generating";
   mindMapStatus?: "idle" | "generating";
+  userEmail: string;
   createdAt: Date;
 }
 
 const NotebookSchema = new Schema<INotebook>({
   name: { type: String, required: true, trim: true },
+  userEmail: { type: String, required: true, index: true },
   roadmap: { type: Schema.Types.Mixed, default: null },
   podcast: { type: Schema.Types.Mixed, default: null },
   mindMap: { type: Schema.Types.Mixed, default: null },

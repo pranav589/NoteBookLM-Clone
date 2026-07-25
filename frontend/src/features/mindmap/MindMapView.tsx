@@ -56,11 +56,11 @@ const NODE_HEIGHT = 72;
 function getNodeColor(sourceType: SourceType) {
   switch (sourceType) {
     case "youtube":
-      return "border-red-400 bg-red-50/90 hover:border-red-500";
+      return "border-red-400 dark:border-red-900 bg-red-50/90 dark:bg-red-950/20 text-foreground hover:border-red-500";
     case "pdf":
-      return "border-amber-400 bg-amber-50/90 hover:border-amber-500";
+      return "border-amber-400 dark:border-amber-900 bg-amber-50/90 dark:bg-amber-950/20 text-foreground hover:border-accent";
     default:
-      return "border-blue-400 bg-blue-50/90 hover:border-blue-500";
+      return "border-blue-400 dark:border-blue-900 bg-blue-50/90 dark:bg-blue-950/20 text-foreground hover:border-blue-500";
   }
 }
 
@@ -73,18 +73,18 @@ const ConceptNode = React.memo(function ConceptNode({
       tabIndex={0}
       aria-label={`Concept: ${data.label}. ${data.summary}. From ${data.sourceName}.`}
       className={cn(
-        "px-4 py-3 rounded-2xl border-2 shadow-premium transition-all duration-200 cursor-pointer min-w-[160px] max-w-[200px]",
-        "hover:shadow-hover hover:-translate-y-0.5",
+        "px-4 py-3 rounded-[20px] border-2 shadow-xs transition-all duration-200 cursor-pointer min-w-[160px] max-w-[200px]",
+        "hover:shadow-level1 hover:-translate-y-0.5",
         getNodeColor(data.sourceType),
         (data.selected || data.highlighted) &&
-          "ring-2 ring-amber-400 ring-offset-2 -translate-y-0.5 shadow-hover"
+          "ring-2 ring-accent ring-offset-2 dark:ring-offset-stone-900 -translate-y-0.5 shadow-level1"
       )}
     >
-      <Handle type="target" position={Position.Top} className="!bg-amber-500 !w-2 !h-2 !border-0" />
-      <div className="text-xs font-bold text-stone-850 leading-snug text-center line-clamp-2">
+      <Handle type="target" position={Position.Top} className="!bg-accent !w-2 !h-2 !border-0" />
+      <div className="text-xs font-bold text-foreground leading-snug text-center line-clamp-2">
         {data.label}
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-amber-500 !w-2 !h-2 !border-0" />
+      <Handle type="source" position={Position.Bottom} className="!bg-accent !w-2 !h-2 !border-0" />
     </div>
   );
 });
@@ -169,9 +169,18 @@ export function MindMapView({
   const [isMobile, setIsMobile] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    if (typeof document !== "undefined") {
+      setIsDark(document.documentElement.classList.contains("dark"));
+      const observer = new MutationObserver(() => {
+        setIsDark(document.documentElement.classList.contains("dark"));
+      });
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+      return () => observer.disconnect();
+    }
   }, []);
 
   useEffect(() => {
@@ -257,18 +266,23 @@ export function MindMapView({
         label: e.label,
         type: "smoothstep",
         animated: hoveredNodeId ? isConnected : false,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: "#d97706" },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 16,
+          height: 16,
+          color: isConnected ? "#CF4500" : (isDark ? "rgba(243, 240, 238, 0.28)" : "#d1cdc7"),
+        },
         style: {
-          stroke: isConnected ? "#d97706" : "#e7e5e4",
+          stroke: isConnected ? "#CF4500" : (isDark ? "rgba(243, 240, 238, 0.18)" : "#e7e5e4"),
           strokeWidth: isConnected ? 2 : 1,
           opacity: hoveredNodeId && !isConnected ? 0.25 : 1,
         },
         labelStyle: {
-          fill: "#78716c",
+          fill: isDark ? "#A19E9A" : "#78716c",
           fontSize: 10,
           fontWeight: 600,
         },
-        labelBgStyle: { fill: "#fffbeb", fillOpacity: 0.9 },
+        labelBgStyle: { fill: isDark ? "#20201f" : "#fffbeb", fillOpacity: 0.9 },
         labelBgPadding: [4, 6] as [number, number],
         labelBgBorderRadius: 4,
       };
@@ -279,7 +293,7 @@ export function MindMapView({
       : getForceLayout(baseNodes);
 
     return { flowNodes: layouted, flowEdges: baseEdges };
-  }, [mindMap, hoveredNodeId, connectedIds, selectedNode?.id]);
+  }, [mindMap, hoveredNodeId, connectedIds, selectedNode?.id, isDark]);
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
@@ -311,31 +325,86 @@ export function MindMapView({
 
   if (isGenerating) {
     return (
-      <div className="flex-1 p-6 bg-[#FCFAF6]/40 overflow-auto">
+      <div className="flex-1 p-6 bg-background overflow-auto">
         <div className="max-w-3xl mx-auto space-y-6">
           <div className="border-b border-border pb-4 space-y-2">
             <div className="flex items-center gap-2">
-              <Network className="w-5 h-5 text-amber-500 animate-pulse" />
-              <Skeleton className="h-5 w-52 bg-stone-200/70" />
+              <Network className="w-5 h-5 text-accent animate-pulse" />
+              <Skeleton className="h-5 w-52 bg-muted" />
             </div>
-            <Skeleton className="h-3 w-80 bg-stone-200/70" />
-            <p className="text-xs text-stone-500 font-medium flex items-center gap-2 pt-1">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+            <Skeleton className="h-3 w-80 bg-muted" />
+            <p className="text-xs text-muted-foreground font-semibold flex items-center gap-2 pt-1">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />
               Extracting concepts and relationships with AI...
             </p>
           </div>
-          <div className="relative h-72 rounded-2xl border border-border/60 bg-white/50 overflow-hidden">
-            <div className="absolute left-1/4 top-1/4">
-              <Skeleton className="h-14 w-36 rounded-2xl bg-stone-200/70" />
+
+          {/* Interactive ReactFlow Simulation Viewport */}
+          <div
+            className="relative w-full h-[380px] rounded-[20px] border border-border bg-card overflow-hidden shadow-xs"
+            style={{
+              backgroundImage: isDark
+                ? "radial-gradient(#2e2e2e 1.5px, transparent 1.5px)"
+                : "radial-gradient(#e7e5e4 1.5px, transparent 1.5px)",
+              backgroundSize: "16px 16px",
+            }}
+          >
+            {/* SVG Connecting Edges */}
+            <svg className="absolute inset-0 pointer-events-none w-full h-full">
+              <defs>
+                <marker
+                  id="arrow"
+                  viewBox="0 0 10 10"
+                  refX="6"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 2 L 10 5 L 0 8 z" fill="#CF4500" />
+                </marker>
+              </defs>
+              {/* Dotted paths simulating animated edges */}
+              <path
+                d="M 400 128 L 400 194 L 220 194 L 220 260"
+                stroke="#CF4500"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+                fill="none"
+                markerEnd="url(#arrow)"
+                className="opacity-70"
+              />
+              <path
+                d="M 400 128 L 400 194 L 580 194 L 580 260"
+                stroke="#CF4500"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+                fill="none"
+                markerEnd="url(#arrow)"
+                className="opacity-70"
+              />
+            </svg>
+
+            {/* Parent Concept Node Skeleton */}
+            <div className="absolute left-[calc(50%-80px)] top-[60px] w-[160px] h-[68px] bg-blue-500/10 dark:bg-blue-950/20 border-2 border-blue-300 dark:border-blue-900 rounded-[20px] p-4 flex flex-col justify-center items-center shadow-xs animate-pulse z-10">
+              {/* Node handles */}
+              <div className="absolute -top-1 w-2 h-2 rounded-full bg-accent" />
+              <Skeleton className="h-3.5 w-5/6 bg-muted-foreground/30" />
+              <div className="absolute -bottom-1 w-2 h-2 rounded-full bg-accent" />
             </div>
-            <div className="absolute right-1/4 top-1/3">
-              <Skeleton className="h-14 w-40 rounded-2xl bg-stone-200/70" />
+
+            {/* Child Concept Node Skeleton 1 (YouTube) */}
+            <div className="absolute left-[calc(27.5%-80px)] top-[260px] w-[160px] h-[68px] bg-red-500/10 dark:bg-red-950/20 border-2 border-red-300 dark:border-red-900 rounded-[20px] p-4 flex flex-col justify-center items-center shadow-xs animate-pulse z-10">
+              <div className="absolute -top-1 w-2 h-2 rounded-full bg-accent" />
+              <Skeleton className="h-3.5 w-3/4 bg-muted-foreground/30" />
+              <div className="absolute -bottom-1 w-2 h-2 rounded-full bg-accent" />
             </div>
-            <div className="absolute left-1/3 bottom-1/4">
-              <Skeleton className="h-14 w-32 rounded-2xl bg-stone-200/70" />
-            </div>
-            <div className="absolute right-1/3 bottom-1/3">
-              <Skeleton className="h-14 w-36 rounded-2xl bg-stone-200/70" />
+
+            {/* Child Concept Node Skeleton 2 (PDF) */}
+            <div className="absolute left-[calc(72.5%-80px)] top-[260px] w-[160px] h-[68px] bg-amber-500/10 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-900 rounded-[20px] p-4 flex flex-col justify-center items-center shadow-xs animate-pulse z-10">
+              <div className="absolute -top-1 w-2 h-2 rounded-full bg-accent" />
+              <Skeleton className="h-3.5 w-4/5 bg-muted-foreground/30" />
+              <div className="absolute -bottom-1 w-2 h-2 rounded-full bg-accent" />
             </div>
           </div>
         </div>
@@ -345,13 +414,13 @@ export function MindMapView({
 
   if (!mindMap) {
     return (
-      <div className="flex-1 p-6 bg-[#FCFAF6]/40 overflow-auto">
+      <div className="flex-1 p-6 bg-background overflow-auto">
         <div className="max-w-md mx-auto text-center py-12 space-y-4">
-          <div className="bg-amber-100/50 border border-amber-200/60 p-4 rounded-full w-fit mx-auto">
-            <Network className="w-10 h-10 text-primary" />
+          <div className="bg-accent/10 border border-accent/20 p-4 rounded-full w-fit mx-auto">
+            <Network className="w-10 h-10 text-accent" />
           </div>
-          <h3 className="text-base font-bold text-stone-850">Interactive Concept Mind Map</h3>
-          <p className="text-xs text-stone-500 leading-relaxed max-w-sm mx-auto">
+          <h3 className="text-base font-bold text-foreground">Interactive Concept Mind Map</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mx-auto font-semibold">
             Visualize how concepts interconnect across your PDFs, videos, and documents as an
             interactive knowledge graph.
           </p>
@@ -364,7 +433,7 @@ export function MindMapView({
                 ? "Wait for source indexing to complete"
                 : "Generate Mind Map"
             }
-            className="bg-primary hover:bg-primary/95 text-white font-medium text-xs py-2 px-6 cursor-pointer shadow-sm rounded-lg"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs py-2 px-6 cursor-pointer shadow-xs rounded-[20px]"
           >
             {isGenerating ? (
               <>
@@ -376,7 +445,7 @@ export function MindMapView({
             )}
           </Button>
           {!hasCompletedSources && (
-            <p className="text-[10px] text-stone-400 font-medium">
+            <p className="text-[10px] text-muted-foreground/60 font-semibold">
               Upload and wait for source indexing to complete first.
             </p>
           )}
@@ -391,7 +460,7 @@ export function MindMapView({
         <button
           type="button"
           aria-label="Dismiss concept details"
-          className="absolute inset-0 z-20 bg-stone-900/25 cursor-pointer"
+          className="absolute inset-0 z-20 bg-black/45 cursor-pointer animate-in fade-in duration-200"
           onClick={() => setSelectedNode(null)}
         />
         <ConceptDetailPanel
@@ -401,7 +470,7 @@ export function MindMapView({
           onSelectNode={handleSelectConnected}
           onViewSource={handleViewSource}
           onAskAboutConcept={handleAskAboutConcept}
-          className="absolute inset-x-0 bottom-0 z-30 h-[min(70vh,560px)] rounded-t-2xl border-t border-x shadow-xl animate-in slide-in-from-bottom-4 duration-200"
+          className="absolute right-0 top-0 bottom-0 z-30 w-full max-w-[460px] border-l border-border shadow-level2 bg-card animate-in slide-in-from-right duration-300 rounded-l-[32px] h-full overflow-hidden"
         />
       </>
     );
@@ -409,23 +478,23 @@ export function MindMapView({
   const mapContent = (
     <div
       className={cn(
-        "flex flex-col overflow-hidden bg-[#FCFAF6]/40 min-h-0",
-        isFullscreen ? "h-full w-full bg-[#FCFAF6]" : "flex-1"
+        "flex flex-col overflow-hidden bg-background min-h-0",
+        isFullscreen ? "h-full w-full bg-background" : "flex-1"
       )}
     >
-      <div className="px-4 md:px-6 py-3 border-b border-border bg-white/90 flex items-center justify-between gap-3 flex-shrink-0">
+      <div className="px-4 md:px-6 py-3 border-b border-border bg-card flex items-center justify-between gap-3 flex-shrink-0">
         <div className="min-w-0">
-          <h3 className="text-sm font-bold text-stone-850 flex items-center gap-2">
-            <Network className="w-4 h-4 text-primary shrink-0" />
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Network className="w-4 h-4 text-accent shrink-0" />
             Concept Mind Map
             <Badge
               variant="secondary"
-              className="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50"
+              className="text-[9px] font-bold bg-accent/10 dark:bg-accent/20 text-accent border border-accent/20 rounded-full"
             >
               {mindMap.nodes.length} concepts
             </Badge>
           </h3>
-          <p className="text-[10px] text-stone-450 mt-0.5 font-medium truncate">
+          <p className="text-[10px] text-muted-foreground/80 mt-0.5 font-semibold truncate">
             Click a node to open its teaching card in the bottom drawer
           </p>
         </div>
@@ -435,7 +504,7 @@ export function MindMapView({
             size="sm"
             onClick={() => setShowTextView((v) => !v)}
             aria-label={showTextView ? "Switch to graph view" : "Switch to text view"}
-            className="text-[10px] h-8 px-2.5 border-stone-200 text-stone-600 hover:bg-stone-50 font-bold cursor-pointer"
+            className="text-[10px] h-8 px-2.5 border-border text-foreground hover:bg-foreground/5 font-bold rounded-full cursor-pointer"
           >
             {showTextView ? (
               <>
@@ -454,7 +523,7 @@ export function MindMapView({
             onClick={onGenerateMindMap}
             variant="outline"
             aria-label="Regenerate mind map"
-            className="hidden sm:inline-flex text-[10px] h-8 px-3 border-amber-250 text-amber-800 hover:bg-amber-50 font-bold uppercase tracking-wider cursor-pointer"
+            className="hidden sm:inline-flex text-[10px] h-8 px-3 border-accent/30 text-accent hover:bg-accent/5 font-bold uppercase tracking-wider rounded-full cursor-pointer"
           >
             {isGenerating ? (
               <>
@@ -470,7 +539,7 @@ export function MindMapView({
             size="sm"
             onClick={() => setIsFullscreen((v) => !v)}
             aria-label={isFullscreen ? "Exit fullscreen mind map" : "Enlarge mind map to full screen"}
-            className="text-[10px] h-8 px-2.5 border-stone-200 text-stone-600 hover:bg-stone-50 font-bold cursor-pointer min-w-[44px]"
+            className="text-[10px] h-8 px-2.5 border-border text-foreground hover:bg-foreground/5 font-bold rounded-full cursor-pointer min-w-[44px]"
           >
             {isFullscreen ? (
               <>
@@ -490,7 +559,7 @@ export function MindMapView({
               size="sm"
               onClick={() => setIsFullscreen(false)}
               aria-label="Close fullscreen mind map"
-              className="text-[10px] h-8 px-2.5 border-stone-200 text-stone-700 hover:bg-stone-100 font-bold cursor-pointer min-w-[44px]"
+              className="text-[10px] h-8 px-2.5 border-border text-foreground hover:bg-foreground/5 font-bold rounded-full cursor-pointer min-w-[44px]"
             >
               <X className="w-3.5 h-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Close</span>
@@ -508,7 +577,7 @@ export function MindMapView({
           >
             <div className="max-w-2xl mx-auto space-y-6">
               <section>
-                <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-3">
+                <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-3">
                   Concepts
                 </h4>
                 <ul className="space-y-3">
@@ -516,9 +585,9 @@ export function MindMapView({
                     <li
                       key={node.id}
                       className={cn(
-                        "bg-card border rounded-2xl p-4 shadow-premium transition-colors",
+                        "bg-card border rounded-[20px] p-4 shadow-xs transition-colors",
                         selectedNode?.id === node.id
-                          ? "border-amber-400"
+                          ? "border-accent"
                           : "border-border"
                       )}
                     >
@@ -527,11 +596,11 @@ export function MindMapView({
                         onClick={() => setSelectedNode(node)}
                         className="text-left w-full cursor-pointer"
                       >
-                        <span className="text-sm font-bold text-stone-850">{node.label}</span>
-                        <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                        <span className="text-sm font-bold text-foreground">{node.label}</span>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed font-semibold">
                           {node.description || node.summary}
                         </p>
-                        <p className="text-[10px] text-stone-400 mt-2 font-medium">
+                        <p className="text-[10px] text-muted-foreground/60 mt-2 font-bold">
                           Source: {node.sourceName} · {formatLocation(node)}
                         </p>
                       </button>
@@ -540,7 +609,7 @@ export function MindMapView({
                 </ul>
               </section>
               <section>
-                <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-3">
+                <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-3">
                   Relationships
                 </h4>
                 <ul className="space-y-2">
@@ -552,14 +621,16 @@ export function MindMapView({
                     return (
                       <li
                         key={edge.id}
-                        className="text-xs text-stone-600 bg-white border border-border/80 rounded-xl px-3 py-2"
+                        className="text-xs text-muted-foreground bg-card border border-border rounded-[15px] px-3.5 py-2 flex items-center justify-between"
                       >
-                        <span className="font-bold text-stone-800">{sourceLabel}</span>{" "}
-                        <span className="text-amber-700 italic">{edge.label}</span>{" "}
-                        <span className="font-bold text-stone-800">{targetLabel}</span>
+                        <div>
+                          <span className="font-bold text-foreground">{sourceLabel}</span>{" "}
+                          <span className="text-accent italic font-semibold">{edge.label}</span>{" "}
+                          <span className="font-bold text-foreground">{targetLabel}</span>
+                        </div>
                         <Badge
                           variant="secondary"
-                          className="ml-2 text-[8px] bg-stone-50 text-stone-500 border-stone-200"
+                          className="text-[8px] bg-muted text-muted-foreground border-border rounded-full py-0 px-2"
                         >
                           {edge.type}
                         </Badge>
@@ -589,14 +660,14 @@ export function MindMapView({
               zoomOnPinch
               onlyRenderVisibleElements
               proOptions={{ hideAttribution: true }}
-              className="bg-[#FCFAF6]/60"
+              className="bg-background"
               aria-label="Interactive concept mind map"
             >
-              <Background color="#e7e5e4" gap={20} size={1} />
+              <Background color={isDark ? "#2e2e2e" : "#e7e5e4"} gap={20} size={1} />
               <Controls
                 showInteractive={!isMobile}
                 className={cn(
-                  "!right-4 !left-auto !shadow-md !rounded-xl !border-border !overflow-hidden [&>button]:!w-11 [&>button]:!h-11 [&>button]:!min-w-[44px] [&>button]:!min-h-[44px]",
+                  "!right-4 !left-auto !shadow-level1 !rounded-[20px] !border-border !bg-card !overflow-hidden [&>button]:!w-10 [&>button]:!h-10 [&>button]:!border-border [&>button]:!text-foreground [&>button]:!bg-card [&>button]:hover:!bg-foreground/5 [&>button]:!min-w-[40px] [&>button]:!min-h-[40px]",
                   selectedNode ? "!bottom-[min(72vh,580px)] sm:!bottom-72" : "!bottom-4"
                 )}
               />
@@ -611,7 +682,7 @@ export function MindMapView({
 
   if (isFullscreen && mounted) {
     return createPortal(
-      <div className="fixed inset-0 z-[100] bg-white flex flex-col">
+      <div className="fixed inset-0 z-[100] bg-background flex flex-col">
         {mapContent}
       </div>,
       document.body

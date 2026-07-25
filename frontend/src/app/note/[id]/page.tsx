@@ -9,6 +9,6 @@ interface NotebookPageProps {
 
 export default function NotebookPage({ params }: NotebookPageProps) {
   const resolvedParams = use(params);
-  
+
   return <NotebookWorkspace notebookId={resolvedParams.id} />;
 }

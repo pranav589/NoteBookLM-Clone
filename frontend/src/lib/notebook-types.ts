@@ -51,6 +51,7 @@ export interface Notebook {
   podcastStatus?: "idle" | "generating";
   mindMapStatus?: "idle" | "generating";
   createdAt: string;
+  sourcesCount?: number;
 }
 
 export interface SourceDoc {

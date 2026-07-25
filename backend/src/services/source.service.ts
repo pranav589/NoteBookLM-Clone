@@ -10,19 +10,22 @@ import { uploadDir } from "../middleware/upload.middleware";
 import { SourceType } from "../types";
 
 export class SourceService {
-  public static async getSourcesByNotebookId(notebookId: string): Promise<ISource[]> {
+  public static async getSourcesByNotebookId(
+    notebookId: string,
+  ): Promise<ISource[]> {
     return Source.find({ notebookId }).sort({ createdAt: -1 });
   }
 
   public static async createSource(params: {
     notebookId: string;
+    userId: string;
     type: SourceType;
     text?: string;
     name?: string;
     url?: string;
     file?: Express.Multer.File;
   }): Promise<{ source: ISource; jobId: string }> {
-    const { notebookId, type, text, name, url, file } = params;
+    const { notebookId, userId, type, text, name, url, file } = params;
 
     let originalName = "";
     let filePath: string | undefined;
@@ -37,7 +40,11 @@ export class SourceService {
     } else if (type === "text" && text) {
       const title = name || `Pasted Text - ${new Date().toLocaleDateString()}`;
       const uniqueName = `${Date.now()}-${crypto.randomUUID()}.txt`;
-      filePath = path.join(uploadDir, uniqueName);
+      // Store text files under user-specific dir
+      const userDir = path.join(uploadDir, userId);
+      //@ts-ignore
+      if (!fs.existsSync(userDir)) await fs.mkdir(userDir, { recursive: true });
+      filePath = path.join(userDir, uniqueName);
       await fs.writeFile(filePath, text, "utf-8");
       originalName = title;
     } else if (type === "url" || type === "youtube") {
@@ -62,6 +69,7 @@ export class SourceService {
     const job = await enqueueIndexingJob({
       sourceId: source._id.toString(),
       notebookId,
+      userId,
       type,
       filePath,
       url: submittedUrl,
@@ -73,7 +81,8 @@ export class SourceService {
 
   public static async reindexSource(
     notebookId: string,
-    sourceId: string
+    sourceId: string,
+    userId: string,
   ): Promise<{ source: ISource; jobId: string }> {
     const source = await Source.findOne({ _id: sourceId, notebookId });
 
@@ -87,7 +96,7 @@ export class SourceService {
       console.error(
         "Warning: Failed to delete Qdrant vectors for re-indexing:",
         sourceId,
-        vectorErr
+        vectorErr,
       );
     }
 
@@ -99,6 +108,7 @@ export class SourceService {
     const job = await enqueueIndexingJob({
       sourceId,
       notebookId,
+      userId,
       type: source.type,
       filePath: isUrlBased ? undefined : source.pathOrUrl,
       url: isUrlBased ? source.pathOrUrl : undefined,
@@ -108,7 +118,10 @@ export class SourceService {
     return { source, jobId: job.id as string };
   }
 
-  public static async deleteSource(notebookId: string, sourceId: string): Promise<void> {
+  public static async deleteSource(
+    notebookId: string,
+    sourceId: string,
+  ): Promise<void> {
     const source = await Source.findOne({ _id: sourceId, notebookId });
 
     if (!source) {
@@ -121,7 +134,7 @@ export class SourceService {
       console.error(
         "Warning: Failed to delete Qdrant vectors for source:",
         sourceId,
-        vectorErr
+        vectorErr,
       );
     }
 
@@ -130,10 +143,12 @@ export class SourceService {
 
   public static async fetchQdrantPoints(
     notebookId: string,
-    sourceTypeFilter?: string
+    sourceTypeFilter?: string,
   ): Promise<any[]> {
     const scrollUrl = `${config.qdrant.url}/collections/${config.qdrant.collection}/points/scroll`;
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
     if (config.qdrant.apiKey) {
       headers["api-key"] = config.qdrant.apiKey;
     }

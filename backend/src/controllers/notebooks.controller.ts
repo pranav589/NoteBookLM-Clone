@@ -3,39 +3,40 @@ import mongoose from "mongoose";
 import { NotebookService } from "../services/notebook.service";
 import { ChatMessage } from "../lib/db";
 import { sseManager } from "../lib/sse-manager";
+import { AuthRequest } from "../middleware/auth.middleware";
 
 export class NotebooksController {
-  public static async list(req: Request, res: Response, next: NextFunction) {
+  public static async list(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const notebooks = await NotebookService.listNotebooks();
+      const notebooks = await NotebookService.listNotebooks(req.user!.email);
       return res.json(notebooks);
     } catch (err) {
       return next(err);
     }
   }
 
-  public static async create(req: Request, res: Response, next: NextFunction) {
+  public static async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { name } = req.body;
       if (!name || typeof name !== "string" || name.trim().length === 0) {
         return res.status(400).json({ error: "Name is required" });
       }
 
-      const notebook = await NotebookService.createNotebook(name);
+      const notebook = await NotebookService.createNotebook(name, req.user!.email);
       return res.status(201).json(notebook);
     } catch (err) {
       return next(err);
     }
   }
 
-  public static async get(req: Request, res: Response, next: NextFunction) {
+  public static async get(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({ error: "Invalid notebook ID" });
       }
 
-      const details = await NotebookService.getNotebookDetails(id);
+      const details = await NotebookService.getNotebookDetails(id, req.user!.email);
       return res.json(details);
     } catch (err: any) {
       if (err.message === "Notebook not found") {
@@ -45,14 +46,14 @@ export class NotebooksController {
     }
   }
 
-  public static async delete(req: Request, res: Response, next: NextFunction) {
+  public static async delete(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({ error: "Invalid notebook ID" });
       }
 
-      await NotebookService.deleteNotebook(id);
+      await NotebookService.deleteNotebook(id, req.user!.email);
       return res.json({
         message: "Notebook and all associated sources deleted successfully",
       });

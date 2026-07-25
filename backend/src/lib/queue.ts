@@ -52,6 +52,7 @@ if (process.env.NODE_ENV !== "production") {
 export async function enqueueIndexingJob(payload: {
   sourceId: string;
   notebookId: string;
+  userId: string;
   type: "pdf" | "text" | "url" | "youtube" | "transcript";
   filePath?: string;
   url?: string;

@@ -21,7 +21,7 @@ const indexingWorker = new Worker(
     console.log(`📥 Ingesting source job ${job.id}: ${job.data.name} [Type: ${job.data.type}]`);
     await connectToDatabase();
     
-    const { sourceId, notebookId, type, filePath, url, name } = job.data;
+    const { sourceId, notebookId, userId, type, filePath, url, name } = job.data;
     
     try {
       // Set status to indexing in case it wasn't set yet
@@ -46,6 +46,7 @@ const indexingWorker = new Worker(
       const result = await indexSource({
         sourceId,
         notebookId,
+        userId: userId || "unknown",
         type,
         filePath,
         url,

@@ -151,35 +151,35 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             <div
               key={n.id}
               className={cn(
-                "p-4 rounded-2xl border shadow-premium pointer-events-auto bg-white flex flex-col gap-2 transform transition-all duration-300 animate-in fade-in slide-in-from-bottom-5-percent",
-                n.type === "success" && "border-emerald-200 bg-emerald-50/80",
-                n.type === "error" && "border-red-200 bg-red-50/80",
-                n.type === "warning" && "border-amber-200 bg-amber-50/80",
-                n.type === "info" && "border-blue-200 bg-blue-50/80",
-                isProgress && "border-amber-300 bg-[#FCFAF6]/95 shadow-hover border-dashed"
+                "p-4 rounded-[20px] border shadow-level2 pointer-events-auto bg-card flex flex-col gap-2 transform transition-all duration-300 animate-in fade-in slide-in-from-bottom-5-percent",
+                n.type === "success" && "border-emerald-500/25 bg-emerald-500/5 dark:bg-emerald-500/10",
+                n.type === "error" && "border-red-500/25 bg-red-500/5 dark:bg-red-500/10",
+                n.type === "warning" && "border-amber-500/25 bg-amber-500/5 dark:bg-amber-500/10",
+                n.type === "info" && "border-blue-500/25 bg-blue-500/5 dark:bg-blue-500/10",
+                isProgress && "border-accent/35 bg-accent/5 dark:bg-accent/10 border-dashed"
               )}
             >
               <div className="flex items-start gap-3">
                 <div className="shrink-0 mt-0.5">
-                  {n.type === "success" && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
-                  {n.type === "error" && <AlertTriangle className="w-5 h-5 text-red-600" />}
-                  {n.type === "warning" && <AlertTriangle className="w-5 h-5 text-amber-600" />}
-                  {n.type === "info" && <Info className="w-5 h-5 text-blue-600" />}
-                  {isProgress && <Loader2 className="w-5 h-5 text-primary animate-spin" />}
+                  {n.type === "success" && <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />}
+                  {n.type === "error" && <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />}
+                  {n.type === "warning" && <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />}
+                  {n.type === "info" && <Info className="w-5 h-5 text-blue-500 shrink-0" />}
+                  {isProgress && <Loader2 className="w-5 h-5 text-accent animate-spin shrink-0" />}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-bold text-stone-850 truncate tracking-wide">
+                  <h4 className="text-xs font-bold text-foreground truncate tracking-wide">
                     {n.title}
                   </h4>
-                  <p className="text-[11px] text-stone-550 leading-relaxed mt-0.5">
+                  <p className="text-[11px] text-muted-foreground font-semibold leading-relaxed mt-0.5">
                     {n.message}
                   </p>
                 </div>
 
                 <button
                   onClick={() => removeNotification(n.id)}
-                  className="shrink-0 text-stone-400 hover:text-stone-650 transition-colors p-0.5 rounded-lg cursor-pointer"
+                  className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded-lg cursor-pointer"
                   title="Dismiss toast"
                 >
                   <X className="w-4 h-4" />
@@ -187,9 +187,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               </div>
 
               {isProgress && n.progress !== undefined && (
-                <div className="w-full bg-stone-200/60 rounded-full h-1.5 overflow-hidden border border-stone-200/30 mt-1">
+                <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden border border-border/50 mt-1">
                   <div
-                    className="bg-primary h-full transition-all duration-500 rounded-full"
+                    className="bg-accent h-full transition-all duration-500 rounded-full"
                     style={{ width: `${n.progress}%` }}
                   />
                 </div>

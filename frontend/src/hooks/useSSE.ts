@@ -28,7 +28,7 @@ export function useSSE(notebookId: string | undefined, handlers: SSEHandlers) {
   const connect = useCallback(() => {
     if (isUnmountedRef.current || !notebookId) return;
 
-    const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
+    const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
     const url = `${backendBaseUrl}/api/notebooks/${notebookId}/sse`;
 
     // Close any existing connection before reconnecting
@@ -37,7 +37,9 @@ export function useSSE(notebookId: string | undefined, handlers: SSEHandlers) {
     }
 
     handlersRef.current.onStatusChange?.("connecting");
-    const eventSource = new EventSource(url);
+    // withCredentials: true is required to send httpOnly cookies (access_token)
+    // cross-origin (localhost:3000 → localhost:5000)
+    const eventSource = new EventSource(url, { withCredentials: true });
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {

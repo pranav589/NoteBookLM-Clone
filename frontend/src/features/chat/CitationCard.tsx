@@ -1,6 +1,5 @@
 import React from "react";
 import { Clock, X, Video, FileText } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { CitationSource } from "../../lib/notebook-types";
 import { Badge } from "@/components/ui/badge";
 
@@ -73,11 +72,11 @@ export function CitationCard({ viewingCitation, onClose }: CitationCardProps) {
         <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2.5 block border-b border-stone-100 pb-2">
           Cited Context Excerpt
         </span>
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-y-auto">
           <p className="text-xs text-stone-800 leading-relaxed whitespace-pre-wrap bg-white p-3.5 border border-border/80 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)] font-medium">
             {viewingCitation.text}
           </p>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

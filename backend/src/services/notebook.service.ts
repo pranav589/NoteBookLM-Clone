@@ -2,21 +2,32 @@ import { Notebook, Source, ChatMessage, INotebook, ISource } from "../lib/db";
 import { deleteNotebookVectors } from "../lib/rag-helper";
 
 export class NotebookService {
-  public static async listNotebooks(): Promise<INotebook[]> {
-    return Notebook.find({}).sort({ createdAt: -1 });
+  public static async listNotebooks(userEmail: string): Promise<any[]> {
+    const notebooks = await Notebook.find({ userEmail }).sort({ createdAt: -1 });
+    const result = await Promise.all(
+      notebooks.map(async (nb) => {
+        const sourcesCount = await Source.countDocuments({ notebookId: nb._id });
+        return {
+          ...nb.toObject(),
+          sourcesCount,
+        };
+      })
+    );
+    return result;
   }
 
-  public static async createNotebook(name: string): Promise<INotebook> {
-    const notebook = new Notebook({ name: name.trim() });
+  public static async createNotebook(name: string, userEmail: string): Promise<INotebook> {
+    const notebook = new Notebook({ name: name.trim(), userEmail });
     await notebook.save();
     return notebook;
   }
 
   public static async getNotebookDetails(
-    id: string
+    id: string,
+    userEmail: string
   ): Promise<{ notebook: INotebook; sources: ISource[] }> {
     const notebook = await Notebook.findById(id);
-    if (!notebook) {
+    if (!notebook || notebook.userEmail !== userEmail) {
       throw new Error("Notebook not found");
     }
 
@@ -24,9 +35,9 @@ export class NotebookService {
     return { notebook, sources };
   }
 
-  public static async deleteNotebook(id: string): Promise<void> {
+  public static async deleteNotebook(id: string, userEmail: string): Promise<void> {
     const notebook = await Notebook.findById(id);
-    if (!notebook) {
+    if (!notebook || notebook.userEmail !== userEmail) {
       throw new Error("Notebook not found");
     }
 

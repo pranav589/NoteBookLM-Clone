@@ -53,11 +53,11 @@ function formatLocation(node: MindMapNode): string {
 function difficultyStyles(difficulty?: string) {
   switch (difficulty) {
     case "advanced":
-      return "bg-red-50 text-red-700 border-red-200";
+      return "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900";
     case "intermediate":
-      return "bg-amber-50 text-amber-800 border-amber-200";
+      return "bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-900";
     default:
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      return "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900";
   }
 }
 
@@ -111,7 +111,7 @@ function ConnectionGroup({
 
   return (
     <div className="space-y-1.5">
-      <h5 className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
+      <h5 className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60">
         {title}
       </h5>
       <div className="flex flex-wrap gap-1.5">
@@ -120,12 +120,12 @@ function ConnectionGroup({
             key={`${edge.id}-${node.id}`}
             type="button"
             onClick={() => onSelectNode(node)}
-            className="text-left px-2.5 py-2 rounded-xl border border-border/80 bg-white hover:border-amber-400 hover:bg-amber-50/40 transition-all cursor-pointer max-w-full sm:max-w-[220px]"
+            className="text-left px-2.5 py-2 rounded-[15px] border border-border bg-card hover:border-accent hover:bg-accent/5 transition-all cursor-pointer max-w-full sm:max-w-[220px]"
           >
-            <span className="text-[11px] font-bold text-stone-800 block truncate">
+            <span className="text-[11px] font-bold text-foreground block truncate">
               {node.label}
             </span>
-            <span className="text-[9px] text-amber-700 italic">
+            <span className="text-[9px] text-accent italic">
               {edge.label || edge.type}
             </span>
           </button>
@@ -173,20 +173,19 @@ export function ConceptDetailPanel({
       aria-modal="true"
     >
       <header className="sticky top-0 z-20 flex-shrink-0 bg-card/95 backdrop-blur-sm supports-backdrop-filter:bg-card/90 border-b border-border">
-        <div className="flex justify-center pt-2.5 pb-1">
-          <div className="w-10 h-1 rounded-full bg-stone-300" aria-hidden />
-        </div>
+        {/* Padding for right drawer top alignment */}
+        <div className="pt-3.5" />
 
         <div className="px-4 pb-3 flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
-            <h3 className="text-sm font-bold text-stone-850 leading-snug pr-1">
+            <h3 className="text-sm font-bold text-foreground leading-snug pr-1">
               {node.label}
             </h3>
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge
                 variant="secondary"
                 className={cn(
-                  "text-[9px] font-bold uppercase tracking-wide border px-2 py-0.5",
+                  "text-[9px] font-bold uppercase tracking-wide border px-2 py-0.5 rounded-full",
                   difficultyStyles(node.difficulty),
                 )}
               >
@@ -194,7 +193,7 @@ export function ConceptDetailPanel({
               </Badge>
               <Badge
                 variant="secondary"
-                className="text-[9px] font-bold uppercase bg-stone-50 text-stone-600 border border-stone-200 px-2 py-0.5"
+                className="text-[9px] font-bold bg-muted/50 text-muted-foreground border border-border px-2 py-0.5 rounded-full"
               >
                 {node.sourceType}
               </Badge>
@@ -204,7 +203,7 @@ export function ConceptDetailPanel({
             type="button"
             onClick={onClose}
             aria-label="Close concept details"
-            className="text-stone-400 hover:text-stone-700 p-1.5 rounded-lg hover:bg-stone-100 flex-shrink-0 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-foreground/5 flex-shrink-0 cursor-pointer transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
@@ -215,21 +214,21 @@ export function ConceptDetailPanel({
         <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-4">
             <section className="space-y-1.5">
-              <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-[10px] font-bold text-accent uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
                 What it is
               </h4>
-              <p className="text-xs text-stone-700 leading-relaxed font-medium">
+              <p className="text-xs text-foreground leading-relaxed font-semibold">
                 {description}
               </p>
             </section>
 
             {whyItMatters && (
               <section className="space-y-1.5">
-                <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                <h4 className="text-[10px] font-bold text-accent uppercase tracking-wider">
                   Why it matters
                 </h4>
-                <p className="text-xs text-stone-600 leading-relaxed bg-amber-50/50 border border-amber-100 rounded-xl px-3 py-2.5">
+                <p className="text-xs text-muted-foreground leading-relaxed bg-accent/5 border border-accent/20 rounded-[15px] px-3.5 py-2.5 font-medium">
                   {whyItMatters}
                 </p>
               </section>
@@ -237,7 +236,7 @@ export function ConceptDetailPanel({
 
             {keyPoints.length > 0 && (
               <section className="space-y-2">
-                <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                <h4 className="text-[10px] font-bold text-accent uppercase tracking-wider flex items-center gap-1.5">
                   <ListChecks className="w-3.5 h-3.5" />
                   Key points
                 </h4>
@@ -245,9 +244,9 @@ export function ConceptDetailPanel({
                   {keyPoints.map((point, idx) => (
                     <li
                       key={idx}
-                      className="text-xs text-stone-700 leading-relaxed flex gap-2 bg-white border border-border/70 rounded-xl px-3 py-2"
+                      className="text-xs text-foreground leading-relaxed flex gap-2 bg-card border border-border rounded-[15px] px-3.5 py-2 font-semibold"
                     >
-                      <span className="text-amber-600 font-bold shrink-0">
+                      <span className="text-accent font-bold shrink-0">
                         {idx + 1}.
                       </span>
                       <span>{point}</span>
@@ -259,11 +258,11 @@ export function ConceptDetailPanel({
 
             {node.example?.trim() && (
               <section className="space-y-1.5">
-                <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                <h4 className="text-[10px] font-bold text-accent uppercase tracking-wider flex items-center gap-1.5">
                   <Lightbulb className="w-3.5 h-3.5" />
                   Example
                 </h4>
-                <p className="text-xs text-stone-600 leading-relaxed italic border border-border/80 rounded-xl px-3 py-2.5 bg-stone-50/60">
+                <p className="text-xs text-muted-foreground leading-relaxed italic border border-border rounded-[15px] px-3.5 py-2.5 bg-muted/20 font-medium">
                   {node.example}
                 </p>
               </section>
@@ -273,7 +272,7 @@ export function ConceptDetailPanel({
           <div className="space-y-4">
             {hasConnections && (
               <section className="space-y-3">
-                <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                <h4 className="text-[10px] font-bold text-accent uppercase tracking-wider flex items-center gap-1.5">
                   <Link2 className="w-3.5 h-3.5" />
                   Connected concepts
                 </h4>
@@ -301,20 +300,20 @@ export function ConceptDetailPanel({
             )}
 
             <section className="space-y-2">
-              <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider">
+              <h4 className="text-[10px] font-bold text-accent uppercase tracking-wider">
                 Source
               </h4>
-              <div className="flex items-center gap-2 text-[11px] bg-stone-50 p-3 rounded-xl border border-border/75">
+              <div className="flex items-center gap-2 text-[11px] bg-muted/20 p-3 rounded-[15px] border border-border">
                 {node.sourceType === "youtube" ? (
                   <Video className="w-3.5 h-3.5 text-red-500 shrink-0" />
                 ) : (
-                  <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <FileText className="w-3.5 h-3.5 text-accent shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="font-bold text-stone-700 truncate">
+                  <p className="font-bold text-foreground truncate">
                     {node.sourceName}
                   </p>
-                  <p className="text-stone-450 text-[10px] mt-0.5">
+                  <p className="text-muted-foreground/60 text-[10px] mt-0.5 font-bold">
                     {node.sourceType.toUpperCase()} · {formatLocation(node)}
                   </p>
                 </div>
@@ -323,7 +322,7 @@ export function ConceptDetailPanel({
 
             {relatedQuestions.length > 1 && (
               <section className="space-y-2">
-                <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                <h4 className="text-[10px] font-bold text-accent uppercase tracking-wider">
                   Suggested questions
                 </h4>
                 <div className="flex flex-col gap-1.5">
@@ -332,7 +331,7 @@ export function ConceptDetailPanel({
                       key={q}
                       type="button"
                       onClick={() => onAskAboutConcept(q)}
-                      className="text-left text-[11px] text-stone-600 hover:text-amber-800 bg-white border border-border/80 hover:border-amber-300 rounded-xl px-2.5 py-2 cursor-pointer transition-colors"
+                      className="text-left text-[11px] text-muted-foreground hover:text-foreground bg-card border border-border hover:border-accent rounded-[15px] px-3.5 py-2 cursor-pointer transition-colors font-semibold"
                     >
                       {q}
                     </button>
@@ -344,10 +343,10 @@ export function ConceptDetailPanel({
         </div>
       </ScrollArea>
 
-      <div className="p-3 border-t border-border flex flex-col sm:flex-row gap-2 flex-shrink-0 bg-stone-50/40">
+      <div className="p-3 border-t border-border flex flex-col sm:flex-row gap-2 flex-shrink-0 bg-sidebar">
         <Button
           onClick={() => onViewSource(node)}
-          className="flex-1 bg-primary hover:bg-primary/95 text-white text-xs font-bold cursor-pointer h-9"
+          className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold cursor-pointer h-9 rounded-full"
         >
           <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
           View Source
@@ -355,7 +354,7 @@ export function ConceptDetailPanel({
         <Button
           variant="outline"
           onClick={() => onAskAboutConcept(askQuestion)}
-          className="flex-1 text-xs font-bold cursor-pointer h-9 border-amber-250 text-amber-800 hover:bg-amber-50"
+          className="flex-1 text-xs font-bold cursor-pointer h-9 border-accent text-accent hover:bg-accent/5 rounded-full"
         >
           <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
           Ask about this

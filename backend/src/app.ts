@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import apiRoutes from "./routes";
 import { errorHandler } from "./middleware/error.middleware";
 import { podcastsDir } from "./middleware/upload.middleware";
@@ -8,6 +9,7 @@ export function createApp() {
   const app = express();
 
   app.use(cors({ origin: true, credentials: true }));
+  app.use(cookieParser());
   app.use(express.json());
 
   // Static path for served podcasts

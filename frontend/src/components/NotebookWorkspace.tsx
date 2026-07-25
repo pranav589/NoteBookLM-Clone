@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { BookOpen, Database, Plus, MessageSquare, Compass, Headphones, Layers, Network, Sparkles, X, Clock, Loader2, Bell, Check, Trash2 } from "lucide-react";
+import { BookOpen, Database, Plus, MessageSquare, Compass, Headphones, Layers, Network, Sparkles, X, Clock, Loader2, Bell, Check, Trash2, ArrowRight, Sun, Moon, PanelLeftClose, PanelLeft, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -11,8 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
-import { NotebookSidebar } from "@/features/notebooks/NotebookSidebar";
-import { SourceList } from "@/features/sources/SourceList";
+import { SourceSidebar } from "@/features/sources/SourceSidebar";
 import { AddSourcePanel } from "@/features/sources/AddSourcePanel";
 import { ChatWindow } from "@/features/chat/ChatWindow";
 import { RoadmapView } from "@/features/roadmap/RoadmapView";
@@ -52,6 +50,30 @@ export function NotebookWorkspace({ notebookId }: NotebookWorkspaceProps) {
 
   const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
   const [viewingCitation, setViewingCitation] = useState<CitationSource | null>(null);
+  const [isSourcesCollapsed, setIsSourcesCollapsed] = useState(false);
+  const [themeMode, setThemeMode] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("theme-mode") as "light" | "dark" | null;
+    const initial = saved || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    setThemeMode(initial);
+    if (initial === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = themeMode === "light" ? "dark" : "light";
+    setThemeMode(nextTheme);
+    localStorage.setItem("theme-mode", nextTheme);
+    if (nextTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
 
   // Synchronize state changes to URL
   const handleTabChange = (tab: "chat" | "roadmap" | "mindmap" | "podcast") => {
@@ -447,33 +469,57 @@ export function NotebookWorkspace({ notebookId }: NotebookWorkspaceProps) {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col font-sans overflow-hidden">
+    <main className="h-screen max-h-screen bg-background text-foreground flex flex-col font-sans overflow-hidden">
       {/* Sleek Minimal Header */}
-      <header className="h-16 border-b border-border bg-white flex items-center px-6 justify-between flex-shrink-0">
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2.5">
-            <div className="bg-amber-500 text-white p-1.5 rounded-lg shadow-sm">
-              <Layers className="w-5 h-5" />
+      <header className="h-16 border-b border-border bg-white dark:bg-stone-900 flex items-center px-6 justify-between flex-shrink-0">
+        <div className="flex items-center">
+          {activeNotebook && (
+            <button
+              onClick={() => setIsSourcesCollapsed(!isSourcesCollapsed)}
+              className="w-9 h-9 border border-border bg-white dark:bg-stone-900 text-foreground hover:bg-foreground/5 flex items-center justify-center transition-all cursor-pointer rounded-full mr-4 shadow-xs"
+              title={isSourcesCollapsed ? "Show sources panel" : "Hide sources panel"}
+            >
+              {isSourcesCollapsed ? (
+                <PanelLeft className="w-4 h-4" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                <BookOpen className="w-4 h-4" />
+              </div>
+              <div>
+                <h1 className="text-sm font-bold text-foreground tracking-tight flex items-center gap-1">
+                  NoteBook<span className="text-accent font-bold">LM</span>
+                </h1>
+                <p className="text-[8px] text-muted-foreground font-bold tracking-widest uppercase">
+                  AI COGNITIVE RESEARCH AGENT
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-sm font-bold text-stone-900 tracking-tight flex items-center gap-1">
-                NoteBook<span className="text-primary font-bold">LM</span>
-              </h1>
-              <p className="text-[9px] text-stone-400 font-bold tracking-widest">
-                AI COGNITIVE RESEARCH AGENT
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Badge variant="outline" className="bg-stone-50 border-border text-stone-600 flex items-center gap-1.5 py-1 px-3 text-[10px] font-semibold rounded-lg shadow-sm">
-              <Database className="w-3.5 h-3.5 text-primary" />
-              <span>MongoDB Connected</span>
-            </Badge>
+          
           </div>
         </div>
 
-        {/* Right Header Section: Notifications */}
-        <div className="relative flex items-center">
+        {/* Right Header Section: Theme Switcher & Notifications */}
+        <div className="relative flex items-center gap-3">
+          {/* Theme Mode Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="w-9 h-9 rounded-full border border-border bg-white dark:bg-stone-900 text-foreground hover:bg-foreground/5 flex items-center justify-center transition-all cursor-pointer shadow-xs"
+            title="Toggle color theme"
+          >
+            {themeMode === "light" ? (
+              <Moon className="w-4.5 h-4.5" />
+            ) : (
+              <Sun className="w-4.5 h-4.5" />
+            )}
+          </button>
+
           <Popover>
             <PopoverTrigger
               onClick={() => {
@@ -481,12 +527,12 @@ export function NotebookWorkspace({ notebookId }: NotebookWorkspaceProps) {
                   markAllAsRead();
                 }
               }}
-              className="relative p-2 text-stone-500 hover:text-stone-850 hover:bg-stone-100 rounded-xl transition-all cursor-pointer flex items-center justify-center border border-transparent hover:border-stone-200/50 outline-none"
+              className="relative w-9 h-9 rounded-full border border-border bg-white dark:bg-stone-900 text-foreground hover:bg-foreground/5 flex items-center justify-center transition-all cursor-pointer shadow-xs outline-none"
               title="Notification Center"
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-4.5 h-4.5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-amber-500 text-white font-bold text-[8.5px] w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                <span className="absolute -top-0.5 -right-0.5 bg-accent text-white font-bold text-[8.5px] w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-white dark:border-stone-900 animate-pulse">
                   {unreadCount}
                 </span>
               )}
@@ -494,10 +540,10 @@ export function NotebookWorkspace({ notebookId }: NotebookWorkspaceProps) {
 
             <PopoverContent
               align="end"
-              className="w-80 bg-white border border-border rounded-2xl shadow-xl z-[999] p-4 flex flex-col gap-3"
+              className="w-80 bg-white dark:bg-stone-900 border border-border rounded-[20px] shadow-level2 z-[999] p-4 flex flex-col gap-3"
             >
-              <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                <span className="text-xs font-bold text-stone-850">
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <span className="text-xs font-bold text-foreground">
                   Notification History
                 </span>
                 <button
@@ -590,15 +636,21 @@ export function NotebookWorkspace({ notebookId }: NotebookWorkspaceProps) {
       </header>
 
       {/* App Body Layout */}
-      <div className="flex-1 flex overflow-hidden h-[calc(100vh-4rem)]">
-        {/* Left Sidebar: Notebook Selection */}
-        <NotebookSidebar
-          activeNotebook={activeNotebook}
-          setActiveNotebook={handleSetActiveNotebook}
-        />
+      <div className="flex-1 flex overflow-hidden h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
+        {/* Left Sidebar: Knowledge Sources */}
+        <div className={cn("transition-all duration-300 flex overflow-hidden border-r border-border bg-sidebar", isSourcesCollapsed ? "w-0 border-r-0" : "w-64")}>
+          <SourceSidebar
+            notebookName={activeNotebook?.name || ""}
+            sources={sources}
+            onDeleteSource={handleDeleteSource}
+            onReindexSource={handleReindexSource}
+            onAddSourceClick={() => setIsAddSourceOpen(true)}
+            isUploading={isUploading}
+          />
+        </div>
 
         {/* Central Workspace */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#FAFAF8]">
+        <div className="flex-1 flex flex-col min-w-0 bg-background">
           {isLoadingDetails ? (
             <div className="flex-1 flex flex-col p-6 space-y-6">
               {/* Header Skeleton */}
@@ -610,7 +662,7 @@ export function NotebookWorkspace({ notebookId }: NotebookWorkspaceProps) {
                 <Skeleton className="h-8 w-24 rounded-lg" />
               </div>
               {/* Tab Navigation Skeleton */}
-              <div className="flex gap-2.5 border-b border-border/80 pb-3">
+              <div className="flex gap-2.5 border-b border-border pb-3">
                 <Skeleton className="h-8 w-24 rounded-lg" />
                 <Skeleton className="h-8 w-28 rounded-lg" />
                 <Skeleton className="h-8 w-32 rounded-lg" />
@@ -629,106 +681,51 @@ export function NotebookWorkspace({ notebookId }: NotebookWorkspaceProps) {
               </div>
             </div>
           ) : !activeNotebook ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[#FCFAF6]/60">
-              <div className="bg-amber-50 border border-amber-100 p-5 rounded-2xl mb-4 shadow-premium">
-                <BookOpen className="w-12 h-12 text-primary" />
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-background">
+              <div className="w-16 h-16 rounded-full border border-border flex items-center justify-center mb-4 bg-card shadow-xs text-primary">
+                <BookOpen className="w-6 h-6 text-foreground" />
               </div>
-              <h2 className="text-lg font-bold text-stone-850">No Active Workspace</h2>
-              <p className="text-xs text-stone-450 max-w-xs mt-2 leading-relaxed font-medium">
+              <h2 className="text-lg font-bold text-foreground">No Active Workspace</h2>
+              <p className="text-xs text-muted-foreground max-w-xs mt-2 leading-relaxed font-semibold">
                 Create a workspace in the left sidebar or select an existing one to begin adding sources.
               </p>
             </div>
           ) : (
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Notebook Header */}
-              <div className="px-6 py-4.5 border-b border-border bg-white flex items-center justify-between flex-shrink-0">
-                <div>
-                  <h2 className="text-sm font-bold text-stone-850 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-primary" />
-                    {activeNotebook.name}
-                  </h2>
-                  <p className="text-[10px] text-stone-400 mt-0.5 font-bold tracking-wider">
-                    {sources.length} SOURCES INDEXED
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
+              {/* Back to Chat header bar */}
+              {activeSubTab !== "chat" && (
+                <div className="border-b border-border bg-card px-6 py-2.5 flex items-center justify-between flex-shrink-0 animate-in fade-in duration-200">
                   <Button
+                    variant="ghost"
                     size="sm"
-                    className="bg-primary hover:bg-primary/95 hover:shadow-md text-white text-xs h-8 cursor-pointer shadow-sm rounded-lg font-bold px-3.5 transition-all duration-200"
-                    onClick={() => setIsAddSourceOpen(true)}
+                    onClick={() => handleTabChange("chat")}
+                    className="text-xs h-7 px-3 text-muted-foreground hover:text-foreground font-bold rounded-full cursor-pointer flex items-center gap-1.5 hover:bg-foreground/5 transition-all"
                   >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    Add Source
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back to Chat Q&A
                   </Button>
+                  <div className="flex items-center gap-1.5">
+                    {activeSubTab === "roadmap" && (
+                      <Badge variant="outline" className="bg-accent/15 border-accent/30 text-accent text-[9px] font-bold py-0.5 px-2 rounded-full flex items-center gap-1">
+                        <Compass className="w-2.5 h-2.5" />
+                        Roadmap View
+                      </Badge>
+                    )}
+                    {activeSubTab === "mindmap" && (
+                      <Badge variant="outline" className="bg-accent/15 border-accent/30 text-accent text-[9px] font-bold py-0.5 px-2 rounded-full flex items-center gap-1">
+                        <Network className="w-2.5 h-2.5" />
+                        Mind Map View
+                      </Badge>
+                    )}
+                    {activeSubTab === "podcast" && (
+                      <Badge variant="outline" className="bg-accent/15 border-accent/30 text-accent text-[9px] font-bold py-0.5 px-2 rounded-full flex items-center gap-1">
+                        <Headphones className="w-2.5 h-2.5" />
+                        Podcast View
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-              </div>
-
-              {/* Sub Tab Navigation */}
-              <div className="border-b border-border/80 bg-stone-50/50 px-6 py-2.5 flex items-center gap-2 flex-shrink-0">
-                <Button
-                  variant={activeSubTab === "chat" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => handleTabChange("chat")}
-                  className={`text-xs h-8 px-3.5 cursor-pointer rounded-lg font-bold transition-all duration-250 ${
-                    activeSubTab === "chat"
-                      ? "bg-primary text-white hover:bg-primary/95 shadow-sm"
-                      : "text-stone-600 hover:bg-stone-150 hover:text-stone-900"
-                  }`}
-                >
-                  <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
-                  Chat Q&A
-                </Button>
-                <Button
-                  variant={activeSubTab === "roadmap" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => handleTabChange("roadmap")}
-                  className={`text-xs h-8 px-3.5 cursor-pointer rounded-lg font-bold transition-all duration-250 ${
-                    activeSubTab === "roadmap"
-                      ? "bg-primary text-white hover:bg-primary/95 shadow-sm"
-                      : "text-stone-600 hover:bg-stone-150 hover:text-stone-900"
-                  }`}
-                >
-                  <Compass className="w-3.5 h-3.5 mr-1.5" />
-                  Concept Roadmap
-                </Button>
-                <Button
-                  variant={activeSubTab === "mindmap" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => handleTabChange("mindmap")}
-                  className={`text-xs h-8 px-3.5 cursor-pointer rounded-lg font-bold transition-all duration-250 ${
-                    activeSubTab === "mindmap"
-                      ? "bg-primary text-white hover:bg-primary/95 shadow-sm"
-                      : "text-stone-600 hover:bg-stone-150 hover:text-stone-900"
-                  }`}
-                >
-                  <Network className="w-3.5 h-3.5 mr-1.5" />
-                  Mind Map
-                  {mindMap && (
-                    <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-amber-300 inline-block" />
-                  )}
-                </Button>
-                <Button
-                  variant={activeSubTab === "podcast" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => handleTabChange("podcast")}
-                  className={`text-xs h-8 px-3.5 cursor-pointer rounded-lg font-bold transition-all duration-250 ${
-                    activeSubTab === "podcast"
-                      ? "bg-primary text-white hover:bg-primary/95 shadow-sm"
-                      : "text-stone-600 hover:bg-stone-150 hover:text-stone-900"
-                  }`}
-                >
-                  <Headphones className="w-3.5 h-3.5 mr-1.5" />
-                  Audio Podcast Dialogue
-                </Button>
-              </div>
-
-              {/* Grid of Ingested Sources */}
-              <SourceList
-                sources={sources}
-                onDeleteSource={handleDeleteSource}
-                onReindexSource={handleReindexSource}
-              />
+              )}
 
               {/* Main Content Area based on Tab Selection */}
               <div className="flex-1 flex flex-col overflow-hidden bg-background">
@@ -778,158 +775,211 @@ export function NotebookWorkspace({ notebookId }: NotebookWorkspaceProps) {
           )}
         </div>
 
-        {/* Right Sidebar: Dynamic Source Viewer & Inspector */}
-        <aside className="w-96 border-l border-border bg-card flex flex-col shadow-sm">
-          <Tabs defaultValue="viewer" className="flex-1 flex flex-col overflow-hidden">
-            <div className="border-b border-border bg-stone-50/50 p-3 flex-shrink-0">
-              <TabsList className="grid w-full grid-cols-2 bg-stone-100/80 p-1 border border-border/80 h-9 rounded-lg">
-                <TabsTrigger
-                  value="viewer"
-                  className="text-xs data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm rounded-md transition-all cursor-pointer font-medium"
-                >
-                  Source Viewer
-                </TabsTrigger>
-                <TabsTrigger
-                  value="inspector"
-                  className="text-xs data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm rounded-md transition-all cursor-pointer font-medium"
-                >
-                  RAG Pipeline
-                </TabsTrigger>
-              </TabsList>
+        {/* Right Sidebar: Study Studio */}
+        <aside className="w-80 border-l border-border bg-sidebar flex flex-col shrink-0">
+          <div className="border-b border-border bg-sidebar px-4 py-3 flex-shrink-0 flex items-center justify-between">
+            <div>
+              <h2 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-accent animate-pulse" />
+                Study Studio
+              </h2>
+              <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">
+                AI Cognitive Assets
+              </p>
             </div>
+            <Badge variant="outline" className="bg-card border-border text-foreground text-[9px] font-bold py-0.5 px-1.5 rounded-full">
+              3 Tools
+            </Badge>
+          </div>
 
-            {/* Tab 1: Interactive Source Viewer */}
-            <TabsContent value="viewer" className="flex-1 flex flex-col overflow-hidden m-0">
-              {!viewingCitation ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-stone-500 bg-[#FCFAF6]/40">
-                  <Clock className="w-8 h-8 text-stone-300 mb-3" />
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                    Source Viewer
-                  </p>
-                  <p className="text-xs mt-1.5 text-stone-500 max-w-[220px] leading-relaxed">
-                    Click a citation badge, roadmap step, or mind map node to display the corresponding source text context here.
-                  </p>
-                </div>
-              ) : (
-                <CitationCard
-                  viewingCitation={viewingCitation}
-                  onClose={() => setViewingCitation(null)}
-                />
-              )}
-            </TabsContent>
-
-            {/* Tab 2: RAG Pipeline Inspector */}
-            <TabsContent value="inspector" className="flex-1 flex flex-col overflow-hidden m-0">
-              {!activeMessage || activeMessage.role === "user" || !activeMessage.queries ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-stone-500 bg-[#FCFAF6]/40">
-                  <Layers className="w-8 h-8 text-stone-300 mb-3" />
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                    RAG Inspector
-                  </p>
-                  <p className="text-xs mt-1.5 text-stone-500 max-w-[220px] leading-relaxed">
-                    Select any completed assistant message to inspect RAG pipeline operations, query rewrites, and rank scores.
-                  </p>
-                </div>
-              ) : (
-                <ScrollArea className="flex-1 p-4 bg-[#FCFAF6]/30">
-                  <div className="space-y-6">
-                    {/* Query variants */}
-                    <div className="space-y-3">
-                      <h3 className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Query Expansion (LangChain)
-                      </h3>
-
-                      <div className="space-y-2 text-xs">
-                        <div className="bg-white border border-border p-3 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                          <span className="text-[10px] text-stone-400 block font-semibold mb-1 uppercase tracking-wide">
-                            Original User Query
-                          </span>
-                          <span className="text-stone-800 leading-relaxed font-medium">{activeMessage.queries.original}</span>
+          <ScrollArea className="flex-1 p-3">
+            <div className="grid grid-cols-2 gap-2.5">
+              
+              {/* Card 1: Concept Roadmap */}
+              {(() => {
+                const isGenerating = isGeneratingRoadmap || isGeneratingRoadmapLocal || notebookData?.notebook.roadmapStatus === "generating";
+                const isReady = !!roadmap;
+                return (
+                  <div
+                    onClick={() => handleTabChange("roadmap")}
+                    className={cn(
+                      "bg-card border p-3.5 rounded-[20px] transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
+                      activeSubTab === "roadmap"
+                        ? "border-accent shadow-level1 bg-white dark:bg-stone-900"
+                        : "border-border hover:border-foreground/20 hover:shadow-xs"
+                    )}
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />
+                    
+                    <div className="space-y-2 pl-1">
+                      <div className="flex items-center justify-between">
+                        <div className="w-7 h-7 rounded-full bg-white dark:bg-stone-900 border border-border flex items-center justify-center text-foreground">
+                          <Compass className="w-3.5 h-3.5" />
                         </div>
+                        {isGenerating ? (
+                          <span className="w-2 h-2 bg-accent rounded-full animate-ping" title="Generating..." />
+                        ) : isReady ? (
+                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981]" title="Ready" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 bg-stone-300 dark:bg-stone-700 rounded-full" title="Not Started" />
+                        )}
+                      </div>
 
-                        <div className="bg-white border border-border p-3 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                          <span className="text-[10px] text-stone-400 block font-semibold mb-1 uppercase tracking-wide">
-                            Rewritten Query
-                          </span>
-                          <span className="text-stone-855 leading-relaxed">{activeMessage.queries.rewritten}</span>
-                        </div>
-
-                        <div className="bg-white border border-border p-3 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                          <span className="text-[10px] text-stone-400 block font-semibold mb-1 uppercase tracking-wide">
-                            Step-Back Question
-                          </span>
-                          <span className="text-stone-850 leading-relaxed italic">"{activeMessage.queries.stepBack}"</span>
-                        </div>
-
-                        <div className="bg-white border border-border p-3 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                          <span className="text-[10px] text-stone-400 block font-semibold mb-1 uppercase tracking-wide">
-                            Sub-Queries Decomposition
-                          </span>
-                          <ul className="list-decimal pl-4 space-y-1.5 text-stone-750 mt-1">
-                            {activeMessage.queries.subQueries.map((q, idx) => (
-                              <li key={idx} className="leading-relaxed">{q}</li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <div className="bg-white border border-border p-3 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                          <span className="text-[10px] text-stone-400 block font-semibold mb-1 uppercase tracking-wide">
-                            HyDE Document (Hypothetical Answer)
-                          </span>
-                          <p className="text-stone-600 italic mt-0.5 leading-relaxed">
-                            "{activeMessage.queries.hyde}"
-                          </p>
-                        </div>
+                      <div className="space-y-0.5">
+                        <h4 className="text-[11px] font-bold text-foreground group-hover:text-accent transition-colors truncate">
+                          Roadmap
+                        </h4>
+                        <p className="text-[9.5px] text-muted-foreground leading-snug line-clamp-2 font-semibold">
+                          Timeline guide of key concepts.
+                        </p>
                       </div>
                     </div>
 
-                    <Separator className="bg-border" />
-
-                    {/* Fused chunks */}
-                    <div className="space-y-3">
-                      <h3 className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
-                        <Database className="w-3.5 h-3.5" />
-                        Fused Rank Candidates (RRF)
-                      </h3>
-
-                      <div className="space-y-2.5">
-                        {activeMessage.sources?.map((src) => (
-                          <div
-                            key={src.index}
-                            onClick={() => setViewingCitation(src)}
-                            className="bg-white border border-border p-3 rounded-xl space-y-2 hover:border-amber-400/70 hover:shadow-sm transition-all cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
-                          >
-                            <div className="flex items-center justify-between border-b border-stone-100 pb-1.5">
-                              <span className="font-semibold text-stone-850 truncate max-w-[170px] text-[11px]">
-                                {src.source}
-                              </span>
-                              <Badge variant="outline" className="text-[9px] bg-stone-50 border-border text-stone-500 font-bold px-1.5 py-0">
-                                Rank #{src.index}
-                              </Badge>
-                            </div>
-
-                            <p className="text-stone-600 line-clamp-2 leading-relaxed text-[11px]">
-                                {src.text}
-                            </p>
-
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-mono border border-amber-100">
-                                RRF Score: {src.rrfScore.toFixed(4)}
-                              </span>
-                              <span className="text-[9px] bg-stone-105 text-stone-500 px-1.5 py-0.5 rounded font-mono border border-stone-200">
-                                Type: {src.metadata?.sourceType}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between pl-1">
+                      <Button
+                        size="sm"
+                        disabled={isGenerating || !hasCompletedSources}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleGenerateRoadmap();
+                        }}
+                        className="text-[8px] h-5.5 px-2 bg-foreground hover:bg-foreground/90 text-background font-bold uppercase tracking-wider rounded-full cursor-pointer transition-all duration-200"
+                      >
+                        {isReady ? "Re-Gen" : "Create"}
+                      </Button>
+                      
+                      <span className="text-[9px] font-bold text-muted-foreground group-hover:text-accent transition-colors flex items-center gap-0.5">
+                        Open <ArrowRight className="w-2.5 h-2.5" />
+                      </span>
                     </div>
                   </div>
-                </ScrollArea>
-              )}
-            </TabsContent>
-          </Tabs>
+                );
+              })()}
+
+              {/* Card 2: Interactive Mind Map */}
+              {(() => {
+                const isGenerating = isGeneratingMindMap || isGeneratingMindMapLocal || notebookData?.notebook.mindMapStatus === "generating";
+                const isReady = !!mindMap;
+                return (
+                  <div
+                    onClick={() => handleTabChange("mindmap")}
+                    className={cn(
+                      "bg-card border p-3.5 rounded-[20px] transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
+                      activeSubTab === "mindmap"
+                        ? "border-accent shadow-level1 bg-white dark:bg-stone-900"
+                        : "border-border hover:border-foreground/20 hover:shadow-xs"
+                    )}
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />
+                    
+                    <div className="space-y-2 pl-1">
+                      <div className="flex items-center justify-between">
+                        <div className="w-7 h-7 rounded-full bg-white dark:bg-stone-900 border border-border flex items-center justify-center text-foreground">
+                          <Network className="w-3.5 h-3.5" />
+                        </div>
+                        {isGenerating ? (
+                          <span className="w-2 h-2 bg-accent rounded-full animate-ping" title="Generating..." />
+                        ) : isReady ? (
+                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981]" title="Ready" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 bg-stone-300 dark:bg-stone-700 rounded-full" title="Not Started" />
+                        )}
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <h4 className="text-[11px] font-bold text-foreground group-hover:text-accent transition-colors truncate">
+                          Mind Map
+                        </h4>
+                        <p className="text-[9.5px] text-muted-foreground leading-snug line-clamp-2 font-semibold">
+                          Interconnect concepts in a graph.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between pl-1">
+                      <Button
+                        size="sm"
+                        disabled={isGenerating || !hasCompletedSources}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleGenerateMindMap();
+                        }}
+                        className="text-[8px] h-5.5 px-2 bg-foreground hover:bg-foreground/90 text-background font-bold uppercase tracking-wider rounded-full cursor-pointer transition-all duration-200"
+                      >
+                        {isReady ? "Re-Gen" : "Create"}
+                      </Button>
+                      
+                      <span className="text-[9px] font-bold text-muted-foreground group-hover:text-accent transition-colors flex items-center gap-0.5">
+                        Open <ArrowRight className="w-2.5 h-2.5" />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Card 3: Audio Podcast (col-span-2) */}
+              {(() => {
+                const isGenerating = isGeneratingPodcast || isGeneratingPodcastLocal || notebookData?.notebook.podcastStatus === "generating";
+                const isReady = !!podcast;
+                return (
+                  <div
+                    onClick={() => handleTabChange("podcast")}
+                    className={cn(
+                      "bg-card border p-3.5 rounded-[20px] transition-all duration-300 relative overflow-hidden group cursor-pointer col-span-2 flex flex-col justify-between min-h-[130px]",
+                      activeSubTab === "podcast"
+                        ? "border-accent shadow-level1 bg-white dark:bg-stone-900"
+                        : "border-border hover:border-foreground/20 hover:shadow-xs"
+                    )}
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />
+                    
+                    <div className="space-y-2 pl-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-white dark:bg-stone-900 border border-border flex items-center justify-center text-foreground">
+                            <Headphones className="w-3.5 h-3.5" />
+                          </div>
+                          <h4 className="text-[11px] font-bold text-foreground group-hover:text-accent transition-colors">
+                            Audio Podcast
+                          </h4>
+                        </div>
+                        {isGenerating ? (
+                          <span className="w-2 h-2 bg-accent rounded-full animate-ping" title="Generating..." />
+                        ) : isReady ? (
+                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981]" title="Ready" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 bg-stone-300 dark:bg-stone-700 rounded-full" title="Not Started" />
+                        )}
+                      </div>
+
+                      <p className="text-[9.5px] text-muted-foreground leading-snug line-clamp-2 font-semibold">
+                        A synthetic host discussion dialogue summarizing your sources into talk-show audio.
+                      </p>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between pl-1.5">
+                      <Button
+                        size="sm"
+                        disabled={isGenerating || !hasCompletedSources}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleGeneratePodcast();
+                        }}
+                        className="text-[8px] h-5.5 px-3 bg-foreground hover:bg-foreground/90 text-background font-bold uppercase tracking-wider rounded-full cursor-pointer transition-all duration-200"
+                      >
+                        {isReady ? "Regenerate" : "Generate Podcast"}
+                      </Button>
+                      
+                      <span className="text-[9px] font-bold text-muted-foreground group-hover:text-accent transition-colors flex items-center gap-0.5">
+                        Open <ArrowRight className="w-2.5 h-2.5" />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            </div>
+          </ScrollArea>
         </aside>
       </div>
 
@@ -940,6 +990,21 @@ export function NotebookWorkspace({ notebookId }: NotebookWorkspaceProps) {
           onSubmit={handleAddSource}
           isUploading={isUploading}
         />
+      )}
+
+      {/* Dynamic Slide-over Right Drawer for Citations */}
+      {viewingCitation && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="absolute inset-0 cursor-pointer animate-in fade-in duration-200" onClick={() => setViewingCitation(null)} />
+          <div className="relative w-full max-w-[500px] bg-card border-l border-border shadow-level2 z-10 flex flex-col h-full animate-in slide-in-from-right duration-300 rounded-l-[32px] overflow-hidden">
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <CitationCard
+                viewingCitation={viewingCitation}
+                onClose={() => setViewingCitation(null)}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

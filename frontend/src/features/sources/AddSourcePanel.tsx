@@ -80,27 +80,27 @@ export function AddSourcePanel({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-xl bg-card border border-border rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] transition-all">
-        <div className="p-4 border-b border-border flex items-center justify-between bg-stone-50/50">
-          <h3 className="font-bold text-stone-855 flex items-center gap-2 text-sm">
-            <UploadCloud className="w-5 h-5 text-primary" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4">
+      <div className="w-full max-w-xl bg-card border border-border rounded-[40px] overflow-hidden shadow-level2 flex flex-col max-h-[90vh] transition-all animate-in zoom-in-95 duration-200">
+        <div className="p-4.5 border-b border-border flex items-center justify-between bg-muted/15">
+          <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+            <UploadCloud className="w-5 h-5 text-accent" />
             Ingest Source to Workspace
           </h3>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-700 p-1.5 rounded-lg hover:bg-stone-100 cursor-pointer transition-colors"
+            className="text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-foreground/5 cursor-pointer transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-5 overflow-y-auto flex-1 space-y-5">
+        <div className="p-6 overflow-y-auto flex-1 space-y-5">
           <div>
-            <label className="text-[10px] uppercase font-bold text-stone-400 tracking-wider mb-2 block">
+            <label className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider mb-2 block">
               Choose Source Type
             </label>
-            <div className="grid grid-cols-5 gap-1.5 bg-stone-50 p-1.5 border border-border rounded-xl">
+            <div className="grid grid-cols-5 gap-1.5 bg-muted/30 p-1.5 border border-border rounded-[15px]">
               {[
                 { id: "pdf", label: "PDF", icon: FileText },
                 { id: "text", label: "Text", icon: FileText },
@@ -116,12 +116,12 @@ export function AddSourcePanel({
                     onClick={() => setSourceType(tab.id as SourceType)}
                     className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all text-center cursor-pointer ${
                       sourceType === tab.id
-                        ? "bg-white text-stone-900 font-semibold shadow-sm border border-amber-250/30"
-                        : "text-stone-500 hover:text-stone-950 hover:bg-white/40 text-[10px]"
+                        ? "bg-card text-foreground font-bold shadow-xs border border-accent/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/10 text-[10px]"
                     }`}
                   >
-                    <Icon className="w-4 h-4 mb-1 text-primary/80" />
-                    <span className="text-[9px] tracking-wide">{tab.label}</span>
+                    <Icon className="w-4 h-4 mb-1 text-accent" />
+                    <span className="text-[9px] tracking-wide font-semibold">{tab.label}</span>
                   </button>
                 );
               })}
@@ -131,7 +131,7 @@ export function AddSourcePanel({
           {sourceType === "pdf" || sourceType === "transcript" || (sourceType === "text" && !dragActive) ? (
             sourceType !== "text" || !formDataHasText() ? (
               <div className="space-y-3">
-                <label className="text-[10px] uppercase font-bold text-stone-400 tracking-wider block">
+                <label className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider block">
                   Select {sourceType === "pdf" ? "PDF Document" : sourceType === "transcript" ? "WebVTT Subtitle file (.vtt)" : "Plain Text file (.txt)"}
                 </label>
                 <div
@@ -140,10 +140,10 @@ export function AddSourcePanel({
                   onDragLeave={handleDrag}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-250 ${
+                  className={`border-2 border-dashed rounded-[20px] p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-250 ${
                     dragActive
-                      ? "border-primary bg-amber-50/50"
-                      : "border-stone-200 hover:border-amber-400 bg-stone-50/20"
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:border-accent bg-muted/10"
                   }`}
                 >
                   <input
@@ -159,11 +159,11 @@ export function AddSourcePanel({
                     }
                     className="hidden"
                   />
-                  <UploadCloud className="w-12 h-12 text-stone-300 mb-2.5 group-hover:text-primary transition-colors" />
-                  <p className="text-xs text-stone-750 font-semibold">
-                    Drag & drop or <span className="text-primary hover:underline">browse</span> your file
+                  <UploadCloud className="w-12 h-12 text-muted-foreground/45 mb-2.5 group-hover:text-accent transition-colors animate-pulse" />
+                  <p className="text-xs text-foreground font-semibold">
+                    Drag & drop or <span className="text-accent hover:underline">browse</span> your file
                   </p>
-                  <p className="text-[10px] text-stone-450 mt-1 leading-relaxed">
+                  <p className="text-[10px] text-muted-foreground/60 mt-1 leading-relaxed font-semibold">
                     Document source is parsed and vector-indexed automatically
                   </p>
                 </div>
@@ -174,7 +174,7 @@ export function AddSourcePanel({
           {sourceType === "text" && (
             <form onSubmit={handleTextOrUrlSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
+                <label className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">
                   Document Title / Name
                 </label>
                 <Input
@@ -182,11 +182,11 @@ export function AddSourcePanel({
                   value={pastedTextName}
                   onChange={(e) => setPastedTextName(e.target.value)}
                   required
-                  className="bg-card border-border text-stone-850 text-xs rounded-lg focus-visible:ring-primary shadow-sm"
+                  className="bg-card border-border text-foreground text-xs rounded-full focus-visible:ring-accent shadow-xs px-4 py-2"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
+                <label className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">
                   Paste Text Content
                 </label>
                 <textarea
@@ -195,16 +195,16 @@ export function AddSourcePanel({
                   onChange={(e) => setPastedTextContent(e.target.value)}
                   required
                   rows={8}
-                  className="w-full bg-card border border-border rounded-xl p-3 text-stone-850 placeholder:text-stone-400 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-sm"
+                  className="w-full bg-card border border-border rounded-[20px] p-3.5 text-foreground placeholder:text-muted-foreground/40 text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent shadow-xs"
                 />
               </div>
               <Button
                 type="submit"
                 disabled={isUploading}
-                className="w-full bg-primary hover:bg-primary/95 text-white font-semibold text-xs h-9 rounded-lg shadow-sm"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-full shadow-xs"
               >
                 {isUploading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                 ) : (
                   "Ingest Plain Text"
                 )}
@@ -215,7 +215,7 @@ export function AddSourcePanel({
           {sourceType === "url" && (
             <form onSubmit={handleTextOrUrlSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
+                <label className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">
                   Website URL to Scrape
                 </label>
                 <Input
@@ -224,16 +224,16 @@ export function AddSourcePanel({
                   value={webUrl}
                   onChange={(e) => setWebUrl(e.target.value)}
                   required
-                  className="bg-card border-border text-stone-850 text-xs rounded-lg focus-visible:ring-primary shadow-sm"
+                  className="bg-card border-border text-foreground text-xs rounded-full focus-visible:ring-accent shadow-xs px-4 py-2"
                 />
               </div>
               <Button
                 type="submit"
                 disabled={isUploading}
-                className="w-full bg-primary hover:bg-primary/95 text-white font-semibold text-xs h-9 rounded-lg shadow-sm"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-full shadow-xs"
               >
                 {isUploading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                 ) : (
                   "Ingest Website URL"
                 )}
@@ -244,7 +244,7 @@ export function AddSourcePanel({
           {sourceType === "youtube" && (
             <form onSubmit={handleTextOrUrlSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
+                <label className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">
                   YouTube Video Link (Requires English subtitles)
                 </label>
                 <Input
@@ -253,16 +253,16 @@ export function AddSourcePanel({
                   value={ytUrl}
                   onChange={(e) => setYtUrl(e.target.value)}
                   required
-                  className="bg-card border-border text-stone-850 text-xs rounded-lg focus-visible:ring-primary shadow-sm"
+                  className="bg-card border-border text-foreground text-xs rounded-full focus-visible:ring-accent shadow-xs px-4 py-2"
                 />
               </div>
               <Button
                 type="submit"
                 disabled={isUploading}
-                className="w-full bg-primary hover:bg-primary/95 text-white font-semibold text-xs h-9 rounded-lg shadow-sm"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-full shadow-xs"
               >
                 {isUploading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                 ) : (
                   "Ingest YouTube Video"
                 )}

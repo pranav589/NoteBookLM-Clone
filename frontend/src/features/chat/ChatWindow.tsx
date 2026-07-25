@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Loader2, ArrowRight } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ChatMessage } from "./ChatMessage";
@@ -26,6 +25,11 @@ export function ChatWindow({
   hasCompletedSources,
 }: ChatWindowProps) {
   const [inputQuery, setInputQuery] = useState("");
+  const quickChips = [
+    "Synthesize Key Points",
+    "Draft Study Syllabus",
+    "Generate Flashcards"
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,10 +39,10 @@ export function ChatWindow({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[#FCFAF6]/60">
-      <ScrollArea className="flex-1 px-6 py-4">
+    <div className="flex-1 flex flex-col overflow-hidden bg-background">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         {messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-stone-400 text-xs py-10 font-medium leading-relaxed max-w-sm mx-auto text-center">
+          <div className="h-full flex items-center justify-center text-muted-foreground/60 text-xs py-10 font-semibold leading-relaxed max-w-sm mx-auto text-center">
             Your notebook assistant is ready. Upload source documents and ask any clarifying questions about their contents.
           </div>
         ) : (
@@ -54,11 +58,32 @@ export function ChatWindow({
             ))}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
-      {/* Input Bar */}
-      <div className="p-5 bg-transparent border-t-0 flex justify-center pb-6">
-        <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-3xl bg-white/80 backdrop-blur-md border border-border shadow-premium rounded-2xl p-2 items-center focus-within:border-amber-450 focus-within:ring-2 focus-within:ring-amber-200 transition-all duration-300">
+      {/* Input Bar with Quick Chips */}
+      <div className="p-5 bg-transparent border-t-0 flex flex-col items-center gap-2 pb-6">
+        {/* Suggestion Chips */}
+        {hasCompletedSources && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1.5 justify-center max-w-3xl w-full scrollbar-none">
+            {quickChips.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => {
+                  if (hasCompletedSources && !isQuerying) {
+                    setInputQuery(chip);
+                  }
+                }}
+                disabled={!hasCompletedSources || isQuerying}
+                className="text-[10px] font-bold text-muted-foreground hover:text-foreground bg-card hover:bg-foreground/5 border border-border px-3.5 py-1 rounded-full cursor-pointer transition-colors whitespace-nowrap disabled:opacity-50"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-3xl bg-white dark:bg-stone-900 border border-border shadow-level2 rounded-full p-2 items-center focus-within:border-foreground/30 transition-all duration-300">
           <Input
             placeholder={
               !hasCompletedSources
@@ -68,12 +93,12 @@ export function ChatWindow({
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
             disabled={isQuerying || !hasCompletedSources}
-            className="flex-1 bg-transparent border-0 focus-visible:ring-0 shadow-none text-stone-850 placeholder:text-stone-450 h-10.5 text-xs md:text-sm font-semibold pl-3"
+            className="flex-1 bg-transparent border-0 focus-visible:ring-0 shadow-none text-foreground placeholder:text-muted-foreground/60 h-10 text-xs md:text-sm font-semibold pl-4"
           />
           <Button
             type="submit"
             disabled={isQuerying || !inputQuery.trim() || !hasCompletedSources}
-            className="bg-primary hover:bg-primary/95 text-white font-semibold px-4.5 h-10 cursor-pointer rounded-xl shadow-sm shrink-0 transition-all duration-200"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground w-10 h-10 rounded-full cursor-pointer shrink-0 transition-all duration-200 flex items-center justify-center p-0"
           >
             {isQuerying ? (
               <Loader2 className="w-4 h-4 animate-spin" />

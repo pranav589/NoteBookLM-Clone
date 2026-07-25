@@ -1,10 +1,11 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { SourceService } from "../services/source.service";
 import { SourceType } from "../types";
+import { AuthRequest } from "../middleware/auth.middleware";
 
 export class SourcesController {
-  public static async list(req: Request, res: Response, next: NextFunction) {
+  public static async list(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id: notebookId } = req.params;
       if (!mongoose.Types.ObjectId.isValid(notebookId)) {
@@ -18,13 +19,14 @@ export class SourcesController {
     }
   }
 
-  public static async create(req: Request, res: Response, next: NextFunction) {
+  public static async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id: notebookId } = req.params;
       if (!mongoose.Types.ObjectId.isValid(notebookId)) {
         return res.status(400).json({ error: "Invalid notebook ID" });
       }
 
+      const userId = req.user!.id;
       const { type, text, name, url } = req.body;
       if (!type || !["pdf", "text", "url", "youtube", "transcript"].includes(type)) {
         return res.status(400).json({ error: "Invalid or missing 'type' field" });
@@ -32,6 +34,7 @@ export class SourcesController {
 
       const { source, jobId } = await SourceService.createSource({
         notebookId,
+        userId,
         type: type as SourceType,
         text,
         name,
@@ -52,7 +55,7 @@ export class SourcesController {
     }
   }
 
-  public static async reindex(req: Request, res: Response, next: NextFunction) {
+  public static async reindex(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id: notebookId, sourceId } = req.params;
       if (
@@ -62,7 +65,8 @@ export class SourcesController {
         return res.status(400).json({ error: "Invalid notebook or source ID" });
       }
 
-      const { source, jobId } = await SourceService.reindexSource(notebookId, sourceId);
+      const userId = req.user!.id;
+      const { source, jobId } = await SourceService.reindexSource(notebookId, sourceId, userId);
 
       return res.status(202).json({
         message: "Source queued for re-indexing",
@@ -77,7 +81,7 @@ export class SourcesController {
     }
   }
 
-  public static async delete(req: Request, res: Response, next: NextFunction) {
+  public static async delete(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id: notebookId, sourceId } = req.params;
       if (
