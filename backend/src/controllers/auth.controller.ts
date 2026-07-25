@@ -24,24 +24,24 @@ function setTokenCookies(res: Response, accessToken: string, refreshToken: strin
   res.cookie("access_token", accessToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "lax",
+    sameSite: isProduction ? "none" : "lax",
     maxAge: ACCESS_TOKEN_COOKIE_MS,
   });
   res.cookie("refresh_token", refreshToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "lax",
+    sameSite: isProduction ? "none" : "lax",
     maxAge: REFRESH_TOKEN_COOKIE_MS,
     path: "/api/auth", // restrict refresh cookie to auth routes only
   });
 }
 
 function clearTokenCookies(res: Response) {
-  res.clearCookie("access_token", { httpOnly: true, secure: isProduction, sameSite: "lax" });
+  res.clearCookie("access_token", { httpOnly: true, secure: isProduction, sameSite: isProduction ? "none" : "lax" });
   res.clearCookie("refresh_token", {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "lax",
+    sameSite: isProduction ? "none" : "lax",
     path: "/api/auth",
   });
 }
