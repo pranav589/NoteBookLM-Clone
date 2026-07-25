@@ -6,6 +6,8 @@ import { ChatOpenAI } from "@langchain/openai";
 import { SystemMessage, HumanMessage, BaseMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { promises as fs } from "fs";
+import mongoose from "mongoose";
+import { downloadFileFromGridFS } from "./gridfs";
 import { config } from "./config";
 import { scrapeWebsite, fetchYoutubeTranscript, parseVtt } from "./parsers";
 import { embeddings } from "./embeddings";
@@ -46,7 +48,14 @@ export async function indexSource({
 
   if (type === "pdf") {
     if (!filePath) throw new Error("Missing filePath for PDF");
-    const loader = new PDFLoader(filePath);
+    let loader: PDFLoader;
+    if (mongoose.Types.ObjectId.isValid(filePath)) {
+      const buffer = await downloadFileFromGridFS(filePath);
+      const blob = new Blob([buffer]);
+      loader = new PDFLoader(blob);
+    } else {
+      loader = new PDFLoader(filePath);
+    }
     const rawDocs = await loader.load();
     const splitDocs = await splitter.splitDocuments(rawDocs);
     docs = splitDocs.map((doc, i) => {
@@ -65,7 +74,13 @@ export async function indexSource({
     });
   } else if (type === "text") {
     if (!filePath) throw new Error("Missing filePath for Text source");
-    const rawText = await fs.readFile(filePath, "utf-8");
+    let rawText = "";
+    if (mongoose.Types.ObjectId.isValid(filePath)) {
+      const buffer = await downloadFileFromGridFS(filePath);
+      rawText = buffer.toString("utf-8");
+    } else {
+      rawText = await fs.readFile(filePath, "utf-8");
+    }
     const splitTexts = await splitter.splitText(rawText);
     docs = splitTexts.map((text, i) => {
       return new Document({
@@ -153,7 +168,13 @@ export async function indexSource({
     }
   } else if (type === "transcript") {
     if (!filePath) throw new Error("Missing filePath for Transcript source");
-    const content = await fs.readFile(filePath, "utf-8");
+    let content = "";
+    if (mongoose.Types.ObjectId.isValid(filePath)) {
+      const buffer = await downloadFileFromGridFS(filePath);
+      content = buffer.toString("utf-8");
+    } else {
+      content = await fs.readFile(filePath, "utf-8");
+    }
     const segments = parseVtt(content);
 
     let currentChunkText = "";

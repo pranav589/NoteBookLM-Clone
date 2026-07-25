@@ -1,7 +1,7 @@
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
-import path from "path";
-import fs from "fs/promises";
-import { podcastsDir } from "../middleware/upload.middleware";
+import mongoose from "mongoose";
+import { Notebook } from "../lib/db";
+import { uploadFileToGridFS, deleteFileFromGridFS } from "../lib/gridfs";
 import { PodcastTurn } from "../types";
 
 function streamToBuffer(readableStream: any): Promise<Buffer> {
@@ -47,10 +47,29 @@ export class TTSService {
     }
 
     const finalMp3Buffer = Buffer.concat(audioBuffers);
-    const fileName = `${notebookId}.mp3`;
-    const filePath = path.join(podcastsDir, fileName);
-    await fs.writeFile(filePath, finalMp3Buffer);
 
-    return `/podcasts/${fileName}`;
+    // Clean up previous podcast audio file if exists to prevent orphaned files
+    try {
+      const notebook = await Notebook.findById(notebookId);
+      if (notebook?.podcast?.audioUrl) {
+        const parts = notebook.podcast.audioUrl.split("/");
+        const oldFileId = parts[parts.length - 1];
+        if (mongoose.Types.ObjectId.isValid(oldFileId)) {
+          await deleteFileFromGridFS(oldFileId);
+        }
+      }
+    } catch (cleanupErr) {
+      console.error("Warning: Failed to clean up previous podcast from GridFS:", cleanupErr);
+    }
+
+    // Upload new podcast audio to GridFS
+    const fileId = await uploadFileToGridFS(
+      finalMp3Buffer,
+      `podcast-${notebookId}.mp3`,
+      "audio/mpeg",
+      { notebookId }
+    );
+
+    return `/api/media/${fileId}`;
   }
 }

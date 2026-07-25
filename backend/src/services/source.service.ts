@@ -1,12 +1,9 @@
 import mongoose from "mongoose";
-import fs from "fs/promises";
-import path from "path";
-import crypto from "crypto";
 import { Source, ISource } from "../lib/db";
 import { enqueueIndexingJob } from "../lib/queue";
 import { deleteSourceVectors } from "../lib/qdrant-client";
 import { config } from "../config";
-import { uploadDir } from "../middleware/upload.middleware";
+import { uploadFileToGridFS, deleteFileFromGridFS } from "../lib/gridfs";
 import { SourceType } from "../types";
 
 export class SourceService {
@@ -35,17 +32,24 @@ export class SourceService {
       if (!file) {
         throw new Error(`File is required for source type '${type}'`);
       }
-      filePath = file.path;
+      const fileId = await uploadFileToGridFS(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+        { userId, notebookId }
+      );
+      filePath = fileId;
       originalName = file.originalname;
     } else if (type === "text" && text) {
       const title = name || `Pasted Text - ${new Date().toLocaleDateString()}`;
-      const uniqueName = `${Date.now()}-${crypto.randomUUID()}.txt`;
-      // Store text files under user-specific dir
-      const userDir = path.join(uploadDir, userId);
-      //@ts-ignore
-      if (!fs.existsSync(userDir)) await fs.mkdir(userDir, { recursive: true });
-      filePath = path.join(userDir, uniqueName);
-      await fs.writeFile(filePath, text, "utf-8");
+      const textBuffer = Buffer.from(text, "utf-8");
+      const fileId = await uploadFileToGridFS(
+        textBuffer,
+        `${title}.txt`,
+        "text/plain",
+        { userId, notebookId }
+      );
+      filePath = fileId;
       originalName = title;
     } else if (type === "url" || type === "youtube") {
       if (!url || url.trim().length === 0) {
@@ -136,6 +140,19 @@ export class SourceService {
         sourceId,
         vectorErr,
       );
+    }
+
+    // Clean up GridFS file if it is an ObjectId reference
+    if (source.pathOrUrl && mongoose.Types.ObjectId.isValid(source.pathOrUrl)) {
+      try {
+        await deleteFileFromGridFS(source.pathOrUrl);
+      } catch (gridfsErr) {
+        console.error(
+          "Warning: Failed to delete file from GridFS:",
+          source.pathOrUrl,
+          gridfsErr
+        );
+      }
     }
 
     await Source.findByIdAndDelete(sourceId);

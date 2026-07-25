@@ -27,19 +27,11 @@ export function getUserUploadDir(userId: string): string {
   return dir;
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const authReq = req as AuthRequest;
-    // If user is authenticated, store under uploads/{userId}/
-    const dir = authReq.user?.id
-      ? getUserUploadDir(authReq.user.id)
-      : uploadDir;
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${crypto.randomUUID()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  },
-});
+const storage = multer.memoryStorage();
 
-export const upload = multer({ storage });
+export const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB file size limit
+  }
+});
