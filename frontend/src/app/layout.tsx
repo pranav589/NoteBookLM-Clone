@@ -23,6 +23,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="h-full overflow-hidden flex flex-col bg-background text-foreground">
         <Providers>

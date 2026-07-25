@@ -12,6 +12,7 @@ import { useMindMap } from "@/features/mindmap/hooks/useMindMap";
 import { usePodcast } from "@/features/podcast/hooks/usePodcast";
 import { useSSE } from "@/hooks/useSSE";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useTheme } from "next-themes";
 
 import type { Notebook, SourceDoc, CitationSource, RoadmapNode, MindMapNode } from "@/lib/notebook-types";
 
@@ -102,28 +103,11 @@ export function NotebookWorkspaceProvider({ notebookId, children }: NotebookWork
   const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
   const [viewingCitation, setViewingCitation] = useState<CitationSource | null>(null);
   const [isSourcesCollapsed, setIsSourcesCollapsed] = useState(false);
-  const [themeMode, setThemeMode] = useState<"light" | "dark">("light");
 
-  useEffect(() => {
-    const saved = localStorage.getItem("theme-mode") as "light" | "dark" | null;
-    const initial = saved || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    setThemeMode(initial);
-    if (initial === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
-
+  const { theme, setTheme } = useTheme();
+  const themeMode = (theme as "light" | "dark") || "light";
   const toggleTheme = () => {
-    const nextTheme = themeMode === "light" ? "dark" : "light";
-    setThemeMode(nextTheme);
-    localStorage.setItem("theme-mode", nextTheme);
-    if (nextTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    setTheme(themeMode === "light" ? "dark" : "light");
   };
 
   const handleTabChange = (tab: "chat" | "roadmap" | "mindmap" | "podcast") => {

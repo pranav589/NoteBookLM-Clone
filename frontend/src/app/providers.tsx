@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, ReactNode } from "react";
+import { ThemeProvider } from "next-themes";
 import { NotificationProvider } from "@/hooks/useNotifications";
 import { AuthProvider } from "@/features/auth/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -21,13 +22,15 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ProtectedRoute>
-          <NotificationProvider>
-            {children}
-          </NotificationProvider>
-        </ProtectedRoute>
-      </AuthProvider>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+        <AuthProvider>
+          <ProtectedRoute>
+            <NotificationProvider>
+              {children}
+            </NotificationProvider>
+          </ProtectedRoute>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
