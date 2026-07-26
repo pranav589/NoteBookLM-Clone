@@ -151,9 +151,29 @@ const queryWorker = new Worker(
       });
 
       console.log(`   → Answered and stored query in DB. Chunks used: ${result.sources?.length}`);
+
+      // Publish query completion via SSE
+      await sseManager.publish(job.data.notebookId, {
+        type: "query:complete",
+        clientMessageId: job.data.clientMessageId,
+        result,
+      });
+
       return result;
     } catch (err: any) {
       console.error(`Error running query in job ${job.id}:`, err);
+      
+      // Publish query failure via SSE
+      try {
+        await sseManager.publish(job.data.notebookId, {
+          type: "query:failed",
+          clientMessageId: job.data.clientMessageId,
+          error: err.message || "Failed to process query",
+        });
+      } catch (sseErr) {
+        console.error("Failed to notify query failure over SSE:", sseErr);
+      }
+
       throw err;
     }
   },

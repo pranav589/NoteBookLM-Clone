@@ -45,10 +45,10 @@ export class AIController {
     }
   }
 
-  // Process search query directly (synchronous REST)
+  // Process search query asynchronously via BullMQ and return a job ID
   public static async query(req: Request, res: Response, next: NextFunction) {
     try {
-      const { query, notebookId } = req.body;
+      const { query, notebookId, clientMessageId } = req.body;
 
       if (typeof query !== "string" || query.trim().length === 0) {
         return res.status(400).json({ error: "Body must include a non-empty 'query' string" });
@@ -58,28 +58,20 @@ export class AIController {
         return res.status(400).json({ error: "Body must include a non-empty 'notebookId' string" });
       }
 
-      // Execute RAG agent directly
-      const result = await askAgent(query.trim(), notebookId.trim());
+      if (typeof clientMessageId !== "string" || clientMessageId.trim().length === 0) {
+        return res.status(400).json({ error: "Body must include a non-empty 'clientMessageId' string" });
+      }
 
-      // Save User Question to DB
-      await ChatMessage.create({
+      // Enqueue the query job for worker execution
+      const job = await enqueueQueryJob({
+        query: query.trim(),
         notebookId: notebookId.trim(),
-        role: "user",
-        content: query.trim(),
+        clientMessageId: clientMessageId.trim(),
       });
 
-      // Save Assistant Answer to DB
-      await ChatMessage.create({
-        notebookId: notebookId.trim(),
-        role: "assistant",
-        content: result.answer,
-        sources: result.sources,
-        queries: result.queries,
-      });
-
-      return res.status(200).json({
-        message: "Query processed successfully",
-        result,
+      return res.status(202).json({
+        message: "Query queued successfully",
+        jobId: job.id,
       });
     } catch (err) {
       return next(err);

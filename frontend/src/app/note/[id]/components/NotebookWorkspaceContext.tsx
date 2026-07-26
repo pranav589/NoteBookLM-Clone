@@ -140,7 +140,9 @@ export function NotebookWorkspaceProvider({ notebookId, children }: NotebookWork
 
   const {
     messages,
+    setMessages,
     isQuerying,
+    setIsQuerying,
     sendQuery,
     selectedMessageId,
     setSelectedMessageId,
@@ -347,6 +349,36 @@ export function NotebookWorkspaceProvider({ notebookId, children }: NotebookWork
     },
     "notifications:updated": () => {
       if (activeNotebook?._id) fetchNotifications(activeNotebook._id);
+    },
+    "query:complete": (data) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === data.clientMessageId
+            ? {
+                ...m,
+                status: "done",
+                content: data.result?.answer || "",
+                queries: data.result?.queries,
+                sources: data.result?.sources,
+              }
+            : m
+        )
+      );
+      setIsQuerying(false);
+    },
+    "query:failed": (data) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === data.clientMessageId
+            ? {
+                ...m,
+                status: "failed",
+                content: `RAG error: ${data.error}`,
+              }
+            : m
+        )
+      );
+      setIsQuerying(false);
     },
   });
 

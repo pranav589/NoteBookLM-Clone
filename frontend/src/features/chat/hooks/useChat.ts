@@ -60,7 +60,8 @@ export function useChat(notebookId: string | undefined, notebookName?: string) {
   }, [notebookId, notebookName]);
 
   const submitQueryMutation = useMutation({
-    mutationFn: (query: string) => notebookApi.submitQuery(notebookId!, query),
+    mutationFn: ({ query, clientMessageId }: { query: string; clientMessageId: string }) =>
+      notebookApi.submitQuery(notebookId!, query, clientMessageId),
   });
 
   const sendQuery = async (queryText: string) => {
@@ -85,21 +86,8 @@ export function useChat(notebookId: string | undefined, notebookName?: string) {
     setIsQuerying(true);
 
     try {
-      const response = await submitQueryMutation.mutateAsync(userMsg.content);
-      
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === queryId
-            ? {
-                ...m,
-                status: "done",
-                content: response.result?.answer || "",
-                queries: response.result?.queries,
-                sources: response.result?.sources,
-              }
-            : m
-        )
-      );
+      await submitQueryMutation.mutateAsync({ query: userMsg.content, clientMessageId: queryId });
+      // SSE event "query:complete" will update the assistantPendingMsg content when ready.
     } catch (err: any) {
       setMessages((prev) =>
         prev.map((m) =>
@@ -112,7 +100,6 @@ export function useChat(notebookId: string | undefined, notebookName?: string) {
             : m
         )
       );
-    } finally {
       setIsQuerying(false);
     }
   };
@@ -121,6 +108,7 @@ export function useChat(notebookId: string | undefined, notebookName?: string) {
     messages,
     setMessages,
     isQuerying,
+    setIsQuerying,
     sendQuery,
     selectedMessageId,
     setSelectedMessageId,

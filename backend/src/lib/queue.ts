@@ -66,7 +66,7 @@ export async function enqueueIndexingJob(payload: {
   });
 }
 
-export async function enqueueQueryJob(payload: { query: string; notebookId: string }) {
+export async function enqueueQueryJob(payload: { query: string; notebookId: string; clientMessageId: string }) {
   return queryQueue.add("run-query", payload, {
     attempts: 2,
     backoff: { type: "exponential", delay: 1000 },
