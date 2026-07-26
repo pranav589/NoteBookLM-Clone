@@ -63,7 +63,7 @@ export function ChatWindow({
       {/* Input Bar with Quick Chips */}
       <div className="p-5 bg-transparent border-t-0 flex flex-col items-center gap-2 pb-6">
         {/* Suggestion Chips */}
-        {hasCompletedSources && (
+        {/* {hasCompletedSources && (
           <div className="flex gap-1.5 overflow-x-auto pb-1.5 justify-center max-w-3xl w-full scrollbar-none">
             {quickChips.map((chip) => (
               <button
@@ -81,7 +81,7 @@ export function ChatWindow({
               </button>
             ))}
           </div>
-        )}
+        )} */}
 
         <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-3xl bg-white dark:bg-stone-900 border border-border shadow-level2 rounded-full p-2 items-center focus-within:border-foreground/30 transition-all duration-300">
           <Input

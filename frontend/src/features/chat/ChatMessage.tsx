@@ -1,5 +1,6 @@
 import React from "react";
 import { User, Bot, Loader2, AlertCircle } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import type { Message, CitationSource } from "../../lib/notebook-types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -22,41 +23,53 @@ export function ChatMessage({
     content: string,
     responseSources?: CitationSource[]
   ) => {
-    if (!responseSources || responseSources.length === 0) {
-      return (
-        <p className="mt-1.5 text-xs md:text-sm text-foreground leading-relaxed whitespace-pre-wrap font-medium">
-          {content}
-        </p>
-      );
-    }
+    // Transform [Source X] into markdown links [Source X](#cite-X)
+    const processedContent = content.replace(/\[Source\s+(\d+)\]/gi, "[Source $1](#cite-$1)");
 
-    const parts = content.split(/(\[Source\s+\d+\])/gi);
     return (
-      <p className="mt-1.5 text-xs md:text-sm text-foreground leading-relaxed whitespace-pre-wrap font-medium">
-        {parts.map((part, index) => {
-          const match = part.match(/\[Source\s+(\d+)\]/i);
-          if (match) {
-            const citeIndex = parseInt(match[1], 10);
-            const matchedSource = responseSources.find((s) => s.index === citeIndex);
+      <div className="text-xs md:text-sm text-foreground leading-relaxed font-medium">
+        <ReactMarkdown
+          components={{
+            a: ({ href, children }) => {
+              if (href?.startsWith("#cite-")) {
+                const citeIndex = parseInt(href.replace("#cite-", ""), 10);
+                const matchedSource = responseSources?.find((s) => s.index === citeIndex);
 
-            if (matchedSource) {
+                if (matchedSource) {
+                  return (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onSelectCitation(matchedSource);
+                      }}
+                      className="mx-1 inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-foreground hover:bg-accent hover:text-white dark:hover:bg-accent border border-border transition-all duration-200 text-[10px] font-bold cursor-pointer align-middle"
+                    >
+                      Source {citeIndex}
+                    </button>
+                  );
+                }
+              }
               return (
-                <button
-                  key={index}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectCitation(matchedSource);
-                  }}
-                  className="mx-1 inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-foreground hover:bg-accent hover:text-white dark:hover:bg-accent border border-border transition-all duration-200 text-[10px] font-bold cursor-pointer"
-                >
-                  Source {citeIndex}
-                </button>
+                <a href={href} className="text-accent underline hover:text-accent/80" target="_blank" rel="noopener noreferrer">
+                  {children}
+                </a>
               );
-            }
-          }
-          return <span key={index}>{part}</span>;
-        })}
-      </p>
+            },
+            p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+            ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
+            ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
+            li: ({ children }) => <li className="mb-1">{children}</li>,
+            h1: ({ children }) => <h1 className="text-sm font-bold mt-3 mb-1">{children}</h1>,
+            h2: ({ children }) => <h2 className="text-xs font-bold mt-2.5 mb-1">{children}</h2>,
+            h3: ({ children }) => <h3 className="text-xs font-bold mt-2 mb-1">{children}</h3>,
+            code: ({ children }) => <code className="bg-stone-100 dark:bg-stone-800 px-1 py-0.5 rounded font-mono text-xs">{children}</code>,
+          }}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
     );
   };
 
@@ -104,7 +117,17 @@ export function ChatMessage({
         
         {isUser ? (
           <div className="mt-1.5 inline-block text-foreground bg-white dark:bg-stone-900 p-4 rounded-[20px] rounded-tr-none text-left border border-border text-xs md:text-sm leading-relaxed font-semibold max-w-xl shadow-xs">
-            {msg.content}
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
+                li: ({ children }) => <li className="mb-1">{children}</li>,
+                code: ({ children }) => <code className="bg-stone-100 dark:bg-stone-800 px-1 py-0.5 rounded font-mono text-xs">{children}</code>,
+              }}
+            >
+              {msg.content}
+            </ReactMarkdown>
           </div>
         ) : msg.status === "pending" ? (
           <div className="space-y-2.5 mt-2.5 max-w-2xl">

@@ -51,14 +51,12 @@ export function StudyStudio() {
           <div
             onClick={() => handleTabChange("roadmap")}
             className={cn(
-              "bg-card border p-3.5 rounded-[20px] transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
+              "bg-card border p-3.5 rounded-lg transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
               activeSubTab === "roadmap"
                 ? "border-accent shadow-level1 bg-white dark:bg-stone-900"
                 : "border-border hover:border-foreground/20 hover:shadow-xs"
             )}
           >
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />
-
             <div className="space-y-2 pl-1">
               <div className="flex items-center justify-between">
                 <div className="w-7 h-7 rounded-full bg-white dark:bg-stone-900 border border-border flex items-center justify-center text-foreground">
@@ -106,14 +104,12 @@ export function StudyStudio() {
           <div
             onClick={() => handleTabChange("mindmap")}
             className={cn(
-              "bg-card border p-3.5 rounded-[20px] transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
+              "bg-card border p-3.5 rounded-lg transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
               activeSubTab === "mindmap"
                 ? "border-accent shadow-level1 bg-white dark:bg-stone-900"
                 : "border-border hover:border-foreground/20 hover:shadow-xs"
             )}
           >
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />
-
             <div className="space-y-2 pl-1">
               <div className="flex items-center justify-between">
                 <div className="w-7 h-7 rounded-full bg-white dark:bg-stone-900 border border-border flex items-center justify-center text-foreground">
@@ -161,14 +157,12 @@ export function StudyStudio() {
           <div
             onClick={() => handleTabChange("podcast")}
             className={cn(
-              "bg-card border p-3.5 rounded-[20px] transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
+              "bg-card border p-3.5 rounded-lg transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
               activeSubTab === "podcast"
                 ? "border-accent shadow-level1 bg-white dark:bg-stone-900"
                 : "border-border hover:border-foreground/20 hover:shadow-xs"
             )}
           >
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />
-
             <div className="space-y-2 pl-1">
               <div className="flex items-center justify-between">
                 <div className="w-7 h-7 rounded-full bg-white dark:bg-stone-900 border border-border flex items-center justify-center text-foreground">
@@ -216,14 +210,12 @@ export function StudyStudio() {
           <div
             onClick={() => handleTabChange("quiz")}
             className={cn(
-              "bg-card border p-3.5 rounded-[20px] transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
+              "bg-card border p-3.5 rounded-lg transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
               activeSubTab === "quiz"
                 ? "border-accent shadow-level1 bg-white dark:bg-stone-900"
                 : "border-border hover:border-foreground/20 hover:shadow-xs"
             )}
           >
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />
-
             <div className="space-y-2 pl-1">
               <div className="flex items-center justify-between">
                 <div className="w-7 h-7 rounded-full bg-white dark:bg-stone-900 border border-border flex items-center justify-center text-foreground">
@@ -253,37 +245,35 @@ export function StudyStudio() {
             </div>
           </div>
 
-          {/* Card 5: Flashcards (col-span-2) */}
+          {/* Card 5: Flashcards */}
           <div
             onClick={() => handleTabChange("flashcard")}
             className={cn(
-              "bg-card border p-3.5 rounded-[20px] transition-all duration-300 relative overflow-hidden group cursor-pointer col-span-2 flex flex-col justify-between min-h-[130px]",
+              "bg-card border p-3.5 rounded-lg transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col justify-between min-h-[145px]",
               activeSubTab === "flashcard"
                 ? "border-accent shadow-level1 bg-white dark:bg-stone-900"
                 : "border-border hover:border-foreground/20 hover:shadow-xs"
             )}
           >
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />
-
-            <div className="space-y-2 pl-1.5">
+            <div className="space-y-2 pl-1">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-white dark:bg-stone-900 border border-border flex items-center justify-center text-foreground">
-                    <BookOpen className="w-3.5 h-3.5" />
-                  </div>
-                  <h4 className="text-[11px] font-bold text-foreground group-hover:text-accent transition-colors">
-                    Flashcards
-                  </h4>
+                <div className="w-7 h-7 rounded-full bg-white dark:bg-stone-900 border border-border flex items-center justify-center text-foreground">
+                  <BookOpen className="w-3.5 h-3.5" />
                 </div>
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981]" title="Ready" />
               </div>
 
-              <p className="text-[9.5px] text-muted-foreground leading-snug line-clamp-2 font-semibold">
-                Study with custom spaced repetition (SM-2) cards to maximize memory retention.
-              </p>
+              <div className="space-y-0.5">
+                <h4 className="text-[11px] font-bold text-foreground group-hover:text-accent transition-colors truncate">
+                  Flashcards
+                </h4>
+                <p className="text-[9.5px] text-muted-foreground leading-snug line-clamp-2 font-semibold">
+                  Spaced repetition cards.
+                </p>
+              </div>
             </div>
 
-            <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between pl-1.5">
+            <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between pl-1">
               <span className="text-[8px] py-1 px-2.5 bg-foreground text-background font-bold uppercase tracking-wider rounded-full">
                 Memorize
               </span>
@@ -298,4 +288,5 @@ export function StudyStudio() {
       </ScrollArea>
     </aside>
   );
+
 }
