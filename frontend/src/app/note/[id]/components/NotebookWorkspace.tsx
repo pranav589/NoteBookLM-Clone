@@ -12,6 +12,8 @@ import { ChatWindow } from "@/features/chat/ChatWindow";
 import { RoadmapView } from "@/features/roadmap/RoadmapView";
 import { MindMapView } from "@/features/mindmap/MindMapView";
 import { PodcastPlayer } from "@/features/podcast/PodcastPlayer";
+import { QuizView } from "@/features/study/components/QuizView";
+import { FlashcardView } from "@/features/study/components/FlashcardView";
 import { CitationCard } from "@/features/chat/CitationCard";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -25,6 +27,7 @@ interface NotebookWorkspaceProps {
 
 function NotebookWorkspaceContent() {
   const {
+    notebookId,
     activeNotebook,
     notebookData,
     isLoadingDetails,
@@ -152,6 +155,18 @@ function NotebookWorkspaceContent() {
                         Podcast View
                       </Badge>
                     )}
+                    {activeSubTab === "quiz" && (
+                      <Badge variant="outline" className="bg-accent/15 border-accent/30 text-accent text-[9px] font-bold py-0.5 px-2 rounded-full flex items-center gap-1">
+                        <BookOpen className="w-2.5 h-2.5" />
+                        Quiz Panel
+                      </Badge>
+                    )}
+                    {activeSubTab === "flashcard" && (
+                      <Badge variant="outline" className="bg-accent/15 border-accent/30 text-accent text-[9px] font-bold py-0.5 px-2 rounded-full flex items-center gap-1">
+                        <BookOpen className="w-2.5 h-2.5" />
+                        Flashcard Panel
+                      </Badge>
+                    )}
                   </div>
                 </div>
               )}
@@ -196,6 +211,21 @@ function NotebookWorkspaceContent() {
                     podcast={podcast}
                     isGenerating={isGeneratingPodcast}
                     onGeneratePodcast={handleGeneratePodcast}
+                    hasCompletedSources={hasCompletedSources}
+                  />
+                )}
+
+                {activeSubTab === "quiz" && (
+                  <QuizView
+                    notebookId={notebookId}
+                    hasCompletedSources={hasCompletedSources}
+                  />
+                )}
+
+                {activeSubTab === "flashcard" && (
+                  <FlashcardView
+                    notebookId={notebookId}
+                    notebookName={activeNotebook?.name}
                     hasCompletedSources={hasCompletedSources}
                   />
                 )}

@@ -7,9 +7,32 @@ import {
   ROADMAP_SYSTEM_PROMPT,
   PODCAST_SYSTEM_PROMPT,
   MINDMAP_SYSTEM_PROMPT,
+  QUIZ_SYSTEM_PROMPT,
+  FLASHCARD_SYSTEM_PROMPT,
 } from "../lib/prompts";
 
-// ── ZOD SCHEMAS FOR STRUCTURED OUTPUT ────────────────────────────────────────
+const quizResultSchema = z.object({
+  title: z.string().describe("Descriptive title of the quiz"),
+  questions: z.array(
+    z.object({
+      id: z.string().describe("Unique identifier for this question (e.g., q1, q2)"),
+      type: z.enum(["mcq", "true_false", "short_answer"]).describe("Question type"),
+      questionText: z.string().describe("Question text"),
+      options: z.array(z.string()).optional().describe("Provide exactly 4 options for MCQ. For true_false or short_answer, omit or leave empty."),
+      correctAnswer: z.string().describe("For MCQ, the exact correct option text. For true_false, 'true' or 'false'. For short_answer, a model answer description."),
+      explanation: z.string().describe("Reasoning explaining why this answer is correct according to the context.")
+    })
+  )
+});
+
+const flashcardsResultSchema = z.object({
+  cards: z.array(
+    z.object({
+      front: z.string().describe("Front side of card (concept prompt)"),
+      back: z.string().describe("Back side of card (explanation / description)")
+    })
+  )
+});
 
 const roadmapResultSchema = z.object({
   title: z.string().describe("Title of the Learning Roadmap"),
@@ -154,5 +177,29 @@ export class AIService {
       sourceType: (node.sourceType as MindMapNode["sourceType"]) || "text",
       sourceLocation: typeof node.sourceLocation === "number" ? node.sourceLocation : 0,
     };
+  }
+
+  public static async generateQuiz(itemsText: string): Promise<any> {
+    const model = this.getModel(0.4);
+    const structuredModel = model.withStructuredOutput(quizResultSchema);
+
+    const response = await structuredModel.invoke([
+      new SystemMessage(QUIZ_SYSTEM_PROMPT),
+      new HumanMessage(`Generate a comprehensive quiz from these source materials:\n\n${itemsText}`),
+    ]);
+
+    return response;
+  }
+
+  public static async generateFlashcards(itemsText: string): Promise<any> {
+    const model = this.getModel(0.5);
+    const structuredModel = model.withStructuredOutput(flashcardsResultSchema);
+
+    const response = await structuredModel.invoke([
+      new SystemMessage(FLASHCARD_SYSTEM_PROMPT),
+      new HumanMessage(`Extract learning flashcards from these source materials:\n\n${itemsText}`),
+    ]);
+
+    return response;
   }
 }

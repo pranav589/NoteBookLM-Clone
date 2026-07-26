@@ -17,6 +17,7 @@
     "@langchain/openai": "^1.5.5",
     "@langchain/qdrant": "^1.0.3",
     "@langchain/textsplitters": "^1.0.1",
+    "anki-apkg-export": "^4.0.3",
     "bullmq": "^5.80.11",
     "cheerio": "^1.2.0",
     "cookie-parser": "^1.4.7",

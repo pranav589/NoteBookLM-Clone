@@ -3,6 +3,7 @@ import notebookRoutes from "./notebooks.routes";
 import sourceRoutes from "./sources.routes";
 import jobRoutes from "./jobs.routes";
 import aiRoutes from "./ai.routes";
+import studyRoutes from "./study.routes";
 import authRoutes from "./auth.routes";
 import mediaRoutes from "./media.routes";
 import { authMiddleware, checkNotebookOwnership } from "../middleware/auth.middleware";
@@ -20,5 +21,6 @@ router.use("/notebooks", notebookRoutes);
 router.use("/notebooks", sourceRoutes);
 router.use("/jobs", jobRoutes);
 router.use("/", aiRoutes);
+router.use("/", studyRoutes);
 
 export default router;

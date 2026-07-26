@@ -33,8 +33,8 @@ interface NotebookWorkspaceContextType {
   activeNotebook: Notebook | null;
   notebookData: any;
   isLoadingDetails: boolean;
-  activeSubTab: "chat" | "roadmap" | "mindmap" | "podcast";
-  handleTabChange: (tab: "chat" | "roadmap" | "mindmap" | "podcast") => void;
+  activeSubTab: "chat" | "roadmap" | "mindmap" | "podcast" | "quiz" | "flashcard";
+  handleTabChange: (tab: "chat" | "roadmap" | "mindmap" | "podcast" | "quiz" | "flashcard") => void;
   isAddSourceOpen: boolean;
   setIsAddSourceOpen: (open: boolean) => void;
   viewingCitation: CitationSource | null;
@@ -93,8 +93,8 @@ export function NotebookWorkspaceProvider({ notebookId, children }: NotebookWork
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
 
-  const [activeSubTab, setActiveSubTab] = useState<"chat" | "roadmap" | "mindmap" | "podcast">(() => {
-    if (tabParam === "roadmap" || tabParam === "mindmap" || tabParam === "podcast" || tabParam === "chat") {
+  const [activeSubTab, setActiveSubTab] = useState<"chat" | "roadmap" | "mindmap" | "podcast" | "quiz" | "flashcard">(() => {
+    if (tabParam === "roadmap" || tabParam === "mindmap" || tabParam === "podcast" || tabParam === "chat" || tabParam === "quiz" || tabParam === "flashcard") {
       return tabParam;
     }
     return "chat";
@@ -110,7 +110,7 @@ export function NotebookWorkspaceProvider({ notebookId, children }: NotebookWork
     setTheme(themeMode === "light" ? "dark" : "light");
   };
 
-  const handleTabChange = (tab: "chat" | "roadmap" | "mindmap" | "podcast") => {
+  const handleTabChange = (tab: "chat" | "roadmap" | "mindmap" | "podcast" | "quiz" | "flashcard") => {
     setActiveSubTab(tab);
     const params = new URLSearchParams(window.location.search);
     params.set("tab", tab);
@@ -118,7 +118,7 @@ export function NotebookWorkspaceProvider({ notebookId, children }: NotebookWork
   };
 
   useEffect(() => {
-    if (tabParam === "roadmap" || tabParam === "mindmap" || tabParam === "podcast" || tabParam === "chat") {
+    if (tabParam === "roadmap" || tabParam === "mindmap" || tabParam === "podcast" || tabParam === "chat" || tabParam === "quiz" || tabParam === "flashcard") {
       if (tabParam !== activeSubTab) {
         setActiveSubTab(tabParam);
       }

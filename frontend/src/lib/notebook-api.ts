@@ -18,4 +18,15 @@ export const notebookApi = {
   listNotifications: (notebookId: string) => apiFetch<any[]>(`/notebooks/${notebookId}/notifications`),
   markNotificationAsRead: (notebookId: string, notificationId: string) => apiFetch<{ success: boolean }>(`/notebooks/${notebookId}/notifications/${notificationId}`, { method: "PATCH" }),
   deleteNotification: (notebookId: string, notificationId: string) => apiFetch<{ success: boolean }>(`/notebooks/${notebookId}/notifications/${notificationId}`, { method: "DELETE" }),
+  
+  // Study endpoints
+  generateQuiz: (notebookId: string) => apiFetch<any>("/quizzes/generate", { method: "POST", data: { notebookId } }),
+  getQuizzes: (notebookId: string) => apiFetch<any[]>(`/quizzes?notebookId=${notebookId}`),
+  getQuiz: (quizId: string) => apiFetch<any>(`/quizzes/${quizId}`),
+  submitQuizAttempt: (quizId: string, answers: any[]) => apiFetch<any>(`/quizzes/${quizId}/attempts`, { method: "POST", data: { answers } }),
+  getQuizAttempts: (notebookId: string) => apiFetch<any[]>(`/quizzes/all/attempts?notebookId=${notebookId}`),
+  generateFlashcards: (notebookId: string) => apiFetch<any>("/flashcards/generate", { method: "POST", data: { notebookId } }),
+  getFlashcards: (notebookId: string) => apiFetch<any[]>(`/flashcards?notebookId=${notebookId}`),
+  getDueFlashcards: (notebookId: string) => apiFetch<any[]>(`/flashcards/due?notebookId=${notebookId}`),
+  submitFlashcardReview: (cardId: string, rating: number) => apiFetch<any>(`/flashcards/${cardId}/review`, { method: "POST", data: { rating } }),
 };
