@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/features/auth/AuthContext";
 
+import { useTheme } from "next-themes";
+
 // Sleek color schemas for cards: left border indicators and icon accents
 const colors = [
   {
@@ -63,29 +65,12 @@ export default function Home() {
   const router = useRouter();
   const [newNotebookName, setNewNotebookName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [themeMode, setThemeMode] = useState<"light" | "dark">("light");
+  const { theme, setTheme } = useTheme();
+  const themeMode = (theme as "light" | "dark") || "light";
   const { user, logout } = useAuth();
 
-  useEffect(() => {
-    const saved = localStorage.getItem("theme-mode") as "light" | "dark" | null;
-    const initial = saved || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    setThemeMode(initial);
-    if (initial === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
-
   const toggleTheme = () => {
-    const nextTheme = themeMode === "light" ? "dark" : "light";
-    setThemeMode(nextTheme);
-    localStorage.setItem("theme-mode", nextTheme);
-    if (nextTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    setTheme(themeMode === "light" ? "dark" : "light");
   };
   
   const { useList, createNotebook, deleteNotebook, isCreating } = useNotebooks();
