@@ -15,6 +15,14 @@ export function createApp() {
   // Static path for served podcasts
   app.use("/podcasts", express.static(podcastsDir));
 
+  // Health check endpoint checking Express server status
+  app.get("/health", (req, res) => {
+    res.status(200).json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   // Mount API routes
   app.use("/api", apiRoutes);
 
