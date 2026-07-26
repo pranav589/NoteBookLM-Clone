@@ -3,7 +3,7 @@ import { MongoDBSaver } from "@langchain/langgraph-checkpoint-mongodb";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, AIMessage, SystemMessage, BaseMessage } from "@langchain/core/messages";
 import mongoose from "mongoose";
-import { retrieveChunks } from "./rag-helper";
+import { retrieveChunks, formatCitations } from "./rag-helper";
 import { config } from "./config";
 import { getRagSystemPrompt } from "./prompts";
 
@@ -106,10 +106,12 @@ export async function askAgent(query: string, notebookId: string) {
   );
 
   const lastMessage = response.messages[response.messages.length - 1];
+  const sources = (lastMessage.additional_kwargs?.sources as any[]) || [];
+  const answer = formatCitations(lastMessage.content as string, sources);
 
   return {
-    answer: lastMessage.content as string,
-    sources: (lastMessage.additional_kwargs?.sources as any[]) || [],
+    answer,
+    sources,
     queries: lastMessage.additional_kwargs?.queries || {},
   };
 }

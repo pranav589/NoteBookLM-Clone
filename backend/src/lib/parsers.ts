@@ -1,4 +1,4 @@
-import * as cheerio from "cheerio";
+import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
 import { YoutubeTranscript } from "youtube-transcript";
 
 /**
@@ -11,40 +11,48 @@ export function getYoutubeVideoId(url: string): string | null {
 }
 
 /**
- * Fetch and extract text blocks from a website.
+ * Fetch and extract text blocks from a website using LangChain's CheerioWebBaseLoader.
  */
 export async function scrapeWebsite(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-    },
-  });
+  try {
+    console.log(`[Parser] Fetching URL via Jina Reader: ${url}`);
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    const res = await fetch(jinaUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+      }
+    });
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch webpage: ${res.status} ${res.statusText}`);
-  }
-
-  const html = await res.text();
-  const $ = cheerio.load(html);
-
-  // Remove elements that don't represent primary text
-  $("script, style, iframe, nav, footer, header, noscript, svg, form").remove();
-
-  const textBlocks: string[] = [];
-  $("h1, h2, h3, h4, h5, h6, p, li").each((_, el) => {
-    const text = $(el).text().trim();
-    if (text.length > 0) {
-      // Normalize whitespace
-      textBlocks.push(text.replace(/\s+/g, " "));
+    if (res.ok) {
+      const markdownContent = await res.text();
+      // Verify we got actual content and not a bot challenge error page
+      if (
+        markdownContent.trim().length > 0 && 
+        !markdownContent.includes("Enable JavaScript and cookies to continue") &&
+        !markdownContent.includes("cloudflare")
+      ) {
+        console.log(`[Parser] Successfully retrieved Markdown via Jina Reader for ${url}`);
+        return markdownContent;
+      }
     }
-  });
-
-  if (textBlocks.length === 0) {
-    throw new Error("No extractable paragraph or heading text found on the page.");
+    console.warn(`[Parser] Jina Reader returned invalid content for ${url}. Trying Cheerio fallback.`);
+  } catch (err: any) {
+    console.warn(`[Parser] Jina Reader failed for ${url}: ${err.message || err}. Trying Cheerio fallback.`);
   }
 
-  return textBlocks.join("\n\n");
+  console.log(`[Parser] Falling back to CheerioWebBaseLoader for URL: ${url}`);
+  const loader = new CheerioWebBaseLoader(url);
+  const docs = await loader.load();
+
+  if (docs.length === 0) {
+    throw new Error("No extractable content found on the page.");
+  }
+
+  // Combine and clean loaded document text
+  return docs
+    .map((doc) => doc.pageContent.trim())
+    .filter((text) => text.length > 0)
+    .join("\n\n");
 }
 
 /**

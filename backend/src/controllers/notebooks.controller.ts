@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { NotebookService } from "../services/notebook.service";
 import { ChatMessage } from "../lib/db";
+import { formatCitations } from "../lib/rag-helper";
+
 import { sseManager } from "../lib/sse-manager";
 import { AuthRequest } from "../middleware/auth.middleware";
 
@@ -75,7 +77,15 @@ export class NotebooksController {
       const messages = await ChatMessage.find({ notebookId: new mongoose.Types.ObjectId(id) })
         .sort({ createdAt: 1 });
 
-      return res.json(messages);
+      const formattedMessages = messages.map((m) => {
+        const obj = m.toObject();
+        if (obj.role === "assistant" && obj.sources && obj.sources.length > 0) {
+          obj.content = formatCitations(obj.content, obj.sources);
+        }
+        return obj;
+      });
+
+      return res.json(formattedMessages);
     } catch (err) {
       return next(err);
     }

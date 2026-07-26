@@ -23,9 +23,6 @@ export function ChatMessage({
     content: string,
     responseSources?: CitationSource[]
   ) => {
-    // Transform [Source X] into markdown links [Source X](#cite-X)
-    const processedContent = content.replace(/\[Source\s+(\d+)\]/gi, "[Source $1](#cite-$1)");
-
     return (
       <div className="text-xs md:text-sm text-foreground leading-relaxed font-medium">
         <ReactMarkdown
@@ -67,7 +64,7 @@ export function ChatMessage({
             code: ({ children }) => <code className="bg-stone-100 dark:bg-stone-800 px-1 py-0.5 rounded font-mono text-xs">{children}</code>,
           }}
         >
-          {processedContent}
+          {content}
         </ReactMarkdown>
       </div>
     );

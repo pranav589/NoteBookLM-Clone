@@ -514,3 +514,27 @@ export async function answerQuery(query: string, notebookId?: string) {
     })),
   };
 }
+
+export function formatCitations(content: string, sources: any[]): string {
+  if (!sources || sources.length === 0) return content;
+  return content.replace(/[\(\[](.*?\d+.*?)[\)\]]/g, (match) => {
+    const numbers = match.match(/\d+/g);
+    if (!numbers) return match;
+
+    const validLinks = numbers
+      .map((numStr) => {
+        const citeIndex = parseInt(numStr, 10);
+        const matchedSource = sources.find((s) => s.index === citeIndex);
+        if (matchedSource) {
+          return `[Source ${citeIndex}](#cite-${citeIndex})`;
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (validLinks.length > 0) {
+      return validLinks.join(", ");
+    }
+    return match;
+  });
+}

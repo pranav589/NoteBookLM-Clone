@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Loader2, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,11 +25,31 @@ export function ChatWindow({
   hasCompletedSources,
 }: ChatWindowProps) {
   const [inputQuery, setInputQuery] = useState("");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isFirstRenderRef = useRef(true);
+
   const quickChips = [
     "Synthesize Key Points",
     "Draft Study Syllabus",
     "Generate Flashcards"
   ];
+
+  const scrollToBottom = (behavior: "auto" | "smooth" = "smooth") => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Instant scroll on initial load, smooth scroll on updates
+      scrollToBottom(isFirstRenderRef.current ? "auto" : "smooth");
+      isFirstRenderRef.current = false;
+    }
+  }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +60,7 @@ export function ChatWindow({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-6 py-4">
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center text-muted-foreground/60 text-xs py-10 font-semibold leading-relaxed max-w-sm mx-auto text-center">
             Your notebook assistant is ready. Upload source documents and ask any clarifying questions about their contents.

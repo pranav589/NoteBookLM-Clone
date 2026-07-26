@@ -151,12 +151,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             <div
               key={n.id}
               className={cn(
-                "p-4 rounded-[20px] border shadow-level2 pointer-events-auto bg-card flex flex-col gap-2 transform transition-all duration-300 animate-in fade-in slide-in-from-bottom-5-percent",
-                n.type === "success" && "border-emerald-500/25 bg-emerald-500/5 dark:bg-emerald-500/10",
-                n.type === "error" && "border-red-500/25 bg-red-500/5 dark:bg-red-500/10",
-                n.type === "warning" && "border-amber-500/25 bg-amber-500/5 dark:bg-amber-500/10",
-                n.type === "info" && "border-blue-500/25 bg-blue-500/5 dark:bg-blue-500/10",
-                isProgress && "border-accent/35 bg-accent/5 dark:bg-accent/10 border-dashed"
+                "p-4 rounded-[20px] border shadow-level2 pointer-events-auto bg-white dark:bg-stone-900 flex flex-col gap-2 transform transition-all duration-300 animate-in fade-in slide-in-from-bottom-5-percent",
+                n.type === "success" && "border-emerald-500/35",
+                n.type === "error" && "border-red-500/35",
+                n.type === "warning" && "border-amber-500/35",
+                n.type === "info" && "border-blue-500/35",
+                isProgress && "border-accent/45 border-dashed"
               )}
             >
               <div className="flex items-start gap-3">
