@@ -122,7 +122,12 @@ const indexingWorker = new Worker(
       throw err;
     }
   },
-  { connection, concurrency: 2 }
+  {
+    connection,
+    concurrency: 2,
+    stalledInterval: 300000, // 5 minutes (reduces poll frequency for stalled jobs)
+    drainDelay: 10,          // 10 seconds (delay before polling again on empty queue)
+  }
 );
 
 // Query Worker
@@ -177,7 +182,12 @@ const queryWorker = new Worker(
       throw err;
     }
   },
-  { connection, concurrency: 4 }
+  {
+    connection,
+    concurrency: 4,
+    stalledInterval: 300000,
+    drainDelay: 10,
+  }
 );
 
 for (const [name, worker] of [
