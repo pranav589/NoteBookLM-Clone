@@ -1,4 +1,4 @@
-import { ChatOpenAI } from "@langchain/openai";
+import { getLLM } from "../lib/llm";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { config } from "../config";
@@ -90,15 +90,8 @@ const mindMapResultSchema = z.object({
 });
 
 export class AIService {
-  private static getModel(temperature: number): ChatOpenAI {
-    return new ChatOpenAI({
-      model: config.openai.chatModel,
-      temperature,
-      configuration: {
-        baseURL: config.openai.baseURL,
-        apiKey: config.openai.apiKey,
-      },
-    });
+  private static getModel(temperature: number) {
+    return getLLM(temperature);
   }
 
   public static async generateRoadmap(itemsText: string): Promise<RoadmapResult> {

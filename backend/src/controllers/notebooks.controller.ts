@@ -78,11 +78,7 @@ export class NotebooksController {
         .sort({ createdAt: 1 });
 
       const formattedMessages = messages.map((m) => {
-        const obj = m.toObject();
-        if (obj.role === "assistant" && obj.sources && obj.sources.length > 0) {
-          obj.content = formatCitations(obj.content, obj.sources);
-        }
-        return obj;
+        return m.toObject();
       });
 
       return res.json(formattedMessages);

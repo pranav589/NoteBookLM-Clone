@@ -12,7 +12,11 @@ export interface AuthRequest extends Request {
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const token = req.cookies?.access_token;
+  let token = req.cookies?.access_token;
+
+  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
 
   if (!token) {
     res.status(401).json({ error: "Access denied. No session token provided." });

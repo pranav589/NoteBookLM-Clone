@@ -28,7 +28,7 @@ export class SourceService {
     let filePath: string | undefined;
     let submittedUrl: string | undefined;
 
-    if (type === "pdf" || type === "transcript" || (type === "text" && file)) {
+    if (type === "pdf" || type === "image" || type === "transcript" || (type === "text" && file)) {
       if (!file) {
         throw new Error(`File is required for source type '${type}'`);
       }

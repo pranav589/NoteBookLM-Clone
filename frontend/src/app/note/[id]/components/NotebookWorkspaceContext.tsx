@@ -357,9 +357,9 @@ export function NotebookWorkspaceProvider({ notebookId, children }: NotebookWork
             ? {
                 ...m,
                 status: "done",
-                content: data.result?.answer || "",
-                queries: data.result?.queries,
-                sources: data.result?.sources,
+                content: data.content || data.result?.answer || "",
+                queries: data.queries || data.result?.queries,
+                sources: data.sources || data.result?.sources,
               }
             : m
         )

@@ -1,22 +1,25 @@
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { Document } from "@langchain/core/documents";
+import {
+  HumanMessage,
+  SystemMessage
+} from "@langchain/core/messages";
+import { getLLM } from "./llm";
 import { QdrantVectorStore } from "@langchain/qdrant";
-import { ChatOpenAI } from "@langchain/openai";
-import { SystemMessage, HumanMessage, BaseMessage } from "@langchain/core/messages";
-import { z } from "zod";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { promises as fs } from "fs";
 import mongoose from "mongoose";
-import { downloadFileFromGridFS } from "./gridfs";
+import { z } from "zod";
 import { config } from "./config";
-import { scrapeWebsite, fetchYoutubeTranscript, parseVtt } from "./parsers";
 import { embeddings } from "./embeddings";
-import { getVectorStore, ensurePayloadIndexes } from "./qdrant-client";
+import { downloadFileFromGridFS } from "./gridfs";
+import { fetchYoutubeTranscript, parseVtt, scrapeWebsite } from "./parsers";
 import {
-  QUERY_REWRITING_SYSTEM_PROMPT,
   HYDE_SYSTEM_PROMPT,
+  QUERY_REWRITING_SYSTEM_PROMPT,
   RAG_SYSTEM_PROMPT_BASE,
 } from "./prompts";
+import { ensurePayloadIndexes, getVectorStore } from "./qdrant-client";
 
 /**
  * Full indexing pipeline for a notebook knowledge source:
@@ -34,7 +37,7 @@ export async function indexSource({
   sourceId: string;
   notebookId: string;
   userId: string;
-  type: "pdf" | "text" | "url" | "youtube" | "transcript";
+  type: "pdf" | "text" | "url" | "youtube" | "transcript" | "image";
   filePath?: string;
   url?: string;
   name: string;
@@ -95,6 +98,58 @@ export async function indexSource({
         },
       });
     });
+  } else if (type === "image") {
+    if (!filePath) throw new Error("Missing filePath for Image source");
+    let buffer: Buffer;
+    if (mongoose.Types.ObjectId.isValid(filePath)) {
+      buffer = await downloadFileFromGridFS(filePath);
+    } else {
+      buffer = await fs.readFile(filePath);
+    }
+
+    const base64Image = buffer.toString("base64");
+    const llm = getLLM(0.0);
+    
+    console.log(`[OCR] Ingesting image source. Transcribing with LLM helper...`);
+    
+    const message = new HumanMessage({
+      content: [
+        {
+          type: "text",
+          text: "Transcribe all text from this image exactly. Do not add any conversational text, explanation, or commentary. Only return the exact transcription."
+        },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:image/jpeg;base64,${base64Image}`
+          }
+        }
+      ]
+    });
+
+    const response = await llm.invoke([message]);
+    const transcribedText = (response.content as string) || "";
+    
+    if (!transcribedText.trim()) {
+      throw new Error("No text transcribed or empty response returned from OCR model.");
+    }
+
+    console.log(`[OCR] Transcribed ${transcribedText.length} characters.`);
+
+    const splitTexts = await splitter.splitText(transcribedText);
+    docs = splitTexts.map((text, i) => {
+      return new Document({
+        pageContent: text,
+        metadata: {
+          notebookId,
+          sourceId,
+          userId,
+          sourceName: name,
+          sourceType: "image",
+          chunkIndex: i,
+        },
+      });
+    });
   } else if (type === "url") {
     if (!url) throw new Error("Missing URL for Website source");
     const scrapedText = await scrapeWebsite(url);
@@ -126,7 +181,9 @@ export async function indexSource({
         currentChunkStart = segment.start;
       }
 
-      const cleanText = segment.text.replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+      const cleanText = segment.text
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"');
       currentChunkText += " " + cleanText;
 
       if (currentChunkText.length >= config.chunking.chunkSize) {
@@ -143,7 +200,7 @@ export async function indexSource({
               timestamp: Math.floor(currentChunkStart),
               chunkIndex: chunkCount++,
             },
-          })
+          }),
         );
         currentChunkText = "";
       }
@@ -163,7 +220,7 @@ export async function indexSource({
             timestamp: Math.floor(currentChunkStart),
             chunkIndex: chunkCount++,
           },
-        })
+        }),
       );
     }
   } else if (type === "transcript") {
@@ -200,7 +257,7 @@ export async function indexSource({
               timestamp: Math.floor(currentChunkStart),
               chunkIndex: chunkCount++,
             },
-          })
+          }),
         );
         currentChunkText = "";
       }
@@ -219,7 +276,7 @@ export async function indexSource({
             timestamp: Math.floor(currentChunkStart),
             chunkIndex: chunkCount++,
           },
-        })
+        }),
       );
     }
   }
@@ -246,30 +303,25 @@ const queryRewritingSchema = z.object({
   stepBack: z
     .string()
     .describe(
-      "A broader, higher-level 'step-back' question whose answer gives useful background for the original query."
+      "A broader, higher-level 'step-back' question whose answer gives useful background for the original query.",
     ),
   rewritten: z
     .string()
     .describe(
-      "The original query with spelling/grammar fixed and made clear and self-contained. Preserve the original intent."
+      "The original query with spelling/grammar fixed and made clear and self-contained. Preserve the original intent.",
     ),
   subQueries: z
     .array(z.string())
-    .describe("Exactly 3 focused sub-questions the original query can be decomposed into."),
+    .describe(
+      "Exactly 3 focused sub-questions the original query can be decomposed into.",
+    ),
 });
 
 /**
  * Rewrite a user's query into several variants using ChatOpenAI structured output:
  */
 export async function queryRewriting(query: string) {
-  const model = new ChatOpenAI({
-    model: config.openai.chatModel,
-    temperature: 0.2,
-    configuration: {
-      baseURL: config.openai.baseURL,
-      apiKey: config.openai.apiKey,
-    },
-  });
+  const model = getLLM(0.2);
 
   const structuredModel = model.withStructuredOutput(queryRewritingSchema);
 
@@ -298,14 +350,7 @@ export async function queryRewriting(query: string) {
  * HyDE (Hypothetical Document Embeddings): generates a hypothetical document excerpt
  */
 export async function hydeDocument(query: string): Promise<string> {
-  const model = new ChatOpenAI({
-    model: config.openai.chatModel,
-    temperature: 0.3,
-    configuration: {
-      baseURL: config.openai.baseURL,
-      apiKey: config.openai.apiKey,
-    },
-  });
+  const model = getLLM(0.3);
 
   const response = await model.invoke([
     new SystemMessage(HYDE_SYSTEM_PROMPT),
@@ -320,7 +365,7 @@ export async function hydeDocument(query: string): Promise<string> {
  */
 function reciprocalRankFusion(
   rankedLists: Array<{ label: string; hits: any[] }>,
-  k = config.retrieval.rrfK
+  k = config.retrieval.rrfK,
 ) {
   const fused = new Map<string, any>();
 
@@ -330,7 +375,9 @@ function reciprocalRankFusion(
       const doc = h[0] || h;
       const rawScore = h[1] ?? 0;
 
-      const docId = doc.metadata?.id || doc.pageContent.slice(0, 50) + doc.metadata?.chunkIndex;
+      const docId =
+        doc.metadata?.id ||
+        doc.pageContent.slice(0, 50) + doc.metadata?.chunkIndex;
       const rank = index + 1; // 1-based
       const contribution = 1 / (k + rank);
       const existing = fused.get(docId);
@@ -360,7 +407,11 @@ function reciprocalRankFusion(
 /**
  * Retrieve chunks using Multi-query expansion and RRF
  */
-export async function retrieveChunks(query: string, notebookId?: string, userId?: string) {
+export async function retrieveChunks(
+  query: string,
+  notebookId?: string,
+  userId?: string,
+) {
   const [{ stepBack, rewritten, subQueries }, hyde] = await Promise.all([
     queryRewriting(query),
     hydeDocument(query),
@@ -370,14 +421,17 @@ export async function retrieveChunks(query: string, notebookId?: string, userId?
     { label: "rewritten", text: rewritten },
     { label: "stepBack", text: stepBack },
     { label: "hyde", text: hyde },
-    ...subQueries.map((q, i) => ({ label: `subQuery${i + 1}`, text: q })),
+    ...subQueries.map((q: string, i: number) => ({ label: `subQuery${i + 1}`, text: q })),
   ].filter((q) => q.text.trim().length > 0);
 
   const vectorStore = await getVectorStore();
 
   const mustClauses: any[] = [];
   if (notebookId) {
-    mustClauses.push({ key: "metadata.notebookId", match: { value: notebookId } });
+    mustClauses.push({
+      key: "metadata.notebookId",
+      match: { value: notebookId },
+    });
   }
   if (userId) {
     mustClauses.push({ key: "metadata.userId", match: { value: userId } });
@@ -387,9 +441,13 @@ export async function retrieveChunks(query: string, notebookId?: string, userId?
   // Search in parallel for all variants
   const resultsPerQuery = await Promise.all(
     variants.map(async (v) => {
-      const hits = await vectorStore.similaritySearchWithScore(v.text, config.retrieval.topK, filter);
+      const hits = await vectorStore.similaritySearchWithScore(
+        v.text,
+        config.retrieval.topK,
+        filter,
+      );
       return hits;
-    })
+    }),
   );
 
   const rankedLists = variants.map((v, i) => ({
@@ -404,7 +462,9 @@ export async function retrieveChunks(query: string, notebookId?: string, userId?
   if (notebookId) {
     try {
       const scrollUrl = `${config.qdrant.url}/collections/${config.qdrant.collection}/points/scroll`;
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
       if (config.qdrant.apiKey) {
         headers["api-key"] = config.qdrant.apiKey;
       }
@@ -415,12 +475,12 @@ export async function retrieveChunks(query: string, notebookId?: string, userId?
           filter: {
             must: [
               { key: "metadata.notebookId", match: { value: notebookId } },
-              { key: "metadata.chunkIndex", range: { lte: 7 } }
-            ]
+              { key: "metadata.chunkIndex", range: { lte: 7 } },
+            ],
           },
           limit: 24, // up to 3 sources * 8 chunks = 24 chunks max
-          with_payload: true
-        })
+          with_payload: true,
+        }),
       });
       if (scrollRes.ok) {
         const scrollData = (await scrollRes.json()) as any;
@@ -428,20 +488,27 @@ export async function retrieveChunks(query: string, notebookId?: string, userId?
 
         for (const p of points) {
           const docId = p.id;
-          const text = p.payload?.content || p.payload?.page_content || p.payload?.text || "";
+          const text =
+            p.payload?.content ||
+            p.payload?.page_content ||
+            p.payload?.text ||
+            "";
 
           // Check if this chunk is already retrieved
-          const isDup = chunks.some(c => c.id === docId || c.text === text);
+          const isDup = chunks.some((c) => c.id === docId || c.text === text);
           if (!isDup) {
             chunks.push({
               id: docId,
               text,
-              source: p.payload?.metadata?.sourceName || p.payload?.metadata?.source || null,
+              source:
+                p.payload?.metadata?.sourceName ||
+                p.payload?.metadata?.source ||
+                null,
               chunkIndex: p.payload?.metadata?.chunkIndex ?? null,
               bestScore: 0.5,
               rrfScore: 0.001,
               matchedBy: ["metadataPage"],
-              metadata: p.payload?.metadata || {}
+              metadata: p.payload?.metadata || {},
             });
           }
         }
@@ -479,19 +546,12 @@ export async function answerQuery(query: string, notebookId?: string) {
       (c, i) =>
         `[Source ${i + 1}] (title: "${c.source}", type: "${c.metadata?.sourceType || "document"}"` +
         `${c.metadata?.pageNumber ? `, page: ${c.metadata.pageNumber}` : ""}` +
-        `${c.metadata?.timestamp ? `, timestamp: ${c.metadata.timestamp}` : ""})\n${c.text}`
+        `${c.metadata?.timestamp ? `, timestamp: ${c.metadata.timestamp}` : ""})\n${c.text}`,
     )
     .join("\n\n");
 
   // 3. Generate answer using ChatOpenAI
-  const model = new ChatOpenAI({
-    model: config.openai.chatModel,
-    temperature: 0.2,
-    configuration: {
-      baseURL: config.openai.baseURL,
-      apiKey: config.openai.apiKey,
-    },
-  });
+  const model = getLLM(0.2);
 
   const response = await model.invoke([
     new SystemMessage(RAG_SYSTEM_PROMPT_BASE),

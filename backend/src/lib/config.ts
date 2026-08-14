@@ -17,6 +17,12 @@ export const config = {
     embeddingDimensions: Number(process.env.EMBEDDING_DIMENSIONS) || 1024, // mistral-embed is 1024-dim
     chatModel: process.env.CHAT_MODEL || "mistral-medium-latest",
   },
+  openrouter: {
+    apiKey: process.env.OPENROUTER_API_KEY || "",
+    baseURL: process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1",
+    chatModel: process.env.OPENROUTER_CHAT_MODEL || "google/gemma-4-26b-a4b-it:free",
+    embeddingModel: process.env.OPENROUTER_EMBEDDING_MODEL || "nvidia/nemotron-3-embed-1b:free",
+  },
   chunking: {
     chunkSize: Number(process.env.CHUNK_SIZE) || 1000,
     chunkOverlap: Number(process.env.CHUNK_OVERLAP) || 200,

@@ -13,6 +13,39 @@ interface ChatMessageProps {
   onSelectCitation: (citation: CitationSource) => void;
 }
 
+function formatCitations(content: string, sources?: CitationSource[]): string {
+  if (!sources || sources.length === 0) return content;
+  return content.replace(/[\(\[](.*?\d+.*?)[\)\]]/g, (match, p1, offset, wholeString) => {
+    // Skip if it's already a link target e.g. (#cite-1)
+    if (match.includes("#cite-")) {
+      return match;
+    }
+    // Skip if it's already followed by a link target e.g. [Source 1](#cite-1)
+    if (wholeString.substring(offset + match.length).startsWith("(#cite-")) {
+      return match;
+    }
+
+    const numbers = match.match(/\d+/g);
+    if (!numbers) return match;
+
+    const validLinks = numbers
+      .map((numStr) => {
+        const citeIndex = parseInt(numStr, 10);
+        const matchedSource = sources.find((s) => s.index === citeIndex);
+        if (matchedSource) {
+          return `[Source ${citeIndex}](#cite-${citeIndex})`;
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (validLinks.length > 0) {
+      return validLinks.join(", ");
+    }
+    return match;
+  });
+}
+
 export function ChatMessage({
   msg,
   isSelected,
@@ -134,7 +167,7 @@ export function ChatMessage({
           </div>
         ) : (
           <div className="mt-1 text-foreground leading-relaxed font-semibold text-xs md:text-sm max-w-2xl">
-            {renderResponseWithCitations(msg.content, msg.sources)}
+            {renderResponseWithCitations(formatCitations(msg.content, msg.sources), msg.sources)}
           </div>
         )}
       </div>

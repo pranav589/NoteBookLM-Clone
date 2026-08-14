@@ -1,4 +1,4 @@
-export type SourceType = "pdf" | "text" | "url" | "youtube" | "transcript";
+export type SourceType = "pdf" | "text" | "url" | "youtube" | "transcript" | "image";
 
 export interface IndexingJobPayload {
   sourceId: string;

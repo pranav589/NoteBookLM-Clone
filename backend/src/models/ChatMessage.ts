@@ -22,7 +22,7 @@ const ChatMessageSchema = new Schema<IChatMessage>({
   notebookId: { type: Schema.Types.ObjectId, ref: "Notebook", required: true, index: true },
   role: { type: String, enum: ["user", "assistant"], required: true },
   content: { type: String, required: true },
-  sources: { type: [Schema.Types.Map], default: [] },
+  sources: { type: [Schema.Types.Mixed], default: [] },
   queries: { type: Schema.Types.Mixed },
   createdAt: { type: Date, default: Date.now, index: true },
 });

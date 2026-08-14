@@ -67,6 +67,8 @@ export const AuthController = {
       return;
     }
 
+    const state = req.query.state as string || "";
+
     const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     const options = {
       redirect_uri: GOOGLE_REDIRECT_URI,
@@ -78,6 +80,7 @@ export const AuthController = {
         "https://www.googleapis.com/auth/userinfo.profile",
         "https://www.googleapis.com/auth/userinfo.email",
       ].join(" "),
+      state,
     };
 
     const qs = new URLSearchParams(options).toString();
@@ -86,9 +89,10 @@ export const AuthController = {
 
   googleCallback: async (req: Request, res: Response) => {
     const code = req.query.code as string;
+    const state = req.query.state as string;
 
     if (!code) {
-      res.redirect(`${FRONTEND_URL}/login?error=no_code`);
+      res.redirect(state ? `${state}?error=no_code` : `${FRONTEND_URL}/login?error=no_code`);
       return;
     }
 
@@ -110,7 +114,7 @@ export const AuthController = {
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
         console.error("Token exchange failed:", errorText);
-        res.redirect(`${FRONTEND_URL}/login?error=token_exchange_failed`);
+        res.redirect(state ? `${state}?error=token_exchange_failed` : `${FRONTEND_URL}/login?error=token_exchange_failed`);
         return;
       }
 
@@ -123,7 +127,7 @@ export const AuthController = {
 
       if (!userInfoResponse.ok) {
         console.error("Failed to fetch Google user info");
-        res.redirect(`${FRONTEND_URL}/login?error=profile_fetch_failed`);
+        res.redirect(state ? `${state}?error=profile_fetch_failed` : `${FRONTEND_URL}/login?error=profile_fetch_failed`);
         return;
       }
 
@@ -134,7 +138,7 @@ export const AuthController = {
       };
 
       if (!googleUser.email) {
-        res.redirect(`${FRONTEND_URL}/login?error=email_not_provided`);
+        res.redirect(state ? `${state}?error=email_not_provided` : `${FRONTEND_URL}/login?error=email_not_provided`);
         return;
       }
 
@@ -161,15 +165,23 @@ export const AuthController = {
       await user.save();
 
       setTokenCookies(res, accessToken, refreshToken);
-      res.redirect(FRONTEND_URL);
+      if (state && (state.startsWith("exp://") || state.startsWith("lumabook://"))) {
+        const separator = state.includes("?") ? "&" : "?";
+        res.redirect(`${state}${separator}accessToken=${accessToken}&refreshToken=${refreshToken}`);
+      } else {
+        res.redirect(state || FRONTEND_URL);
+      }
     } catch (err) {
       console.error("Google auth callback error:", err);
-      res.redirect(`${FRONTEND_URL}/login?error=unknown_error`);
+      res.redirect(state ? `${state}?error=unknown_error` : `${FRONTEND_URL}/login?error=unknown_error`);
     }
   },
 
   refresh: async (req: Request, res: Response) => {
-    const token = req.cookies?.refresh_token;
+    let token = req.cookies?.refresh_token;
+    if (!token && req.body?.refreshToken) {
+      token = req.body.refreshToken;
+    }
 
     if (!token) {
       res.status(401).json({ error: "No refresh token provided." });
@@ -196,7 +208,7 @@ export const AuthController = {
       await user.save();
 
       setTokenCookies(res, newAccessToken, newRefreshToken);
-      res.json({ success: true });
+      res.json({ success: true, accessToken: newAccessToken, refreshToken: newRefreshToken });
     } catch (err) {
       clearTokenCookies(res);
       res.status(401).json({ error: "Invalid or expired refresh token." });

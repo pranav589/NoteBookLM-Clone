@@ -28,7 +28,7 @@ export class SourcesController {
 
       const userId = req.user!.id;
       const { type, text, name, url } = req.body;
-      if (!type || !["pdf", "text", "url", "youtube", "transcript"].includes(type)) {
+      if (!type || !["pdf", "text", "url", "youtube", "transcript", "image"].includes(type)) {
         return res.status(400).json({ error: "Invalid or missing 'type' field" });
       }
 

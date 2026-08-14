@@ -1,6 +1,6 @@
 import { MessagesAnnotation, StateGraph } from "@langchain/langgraph";
 import { MongoDBSaver } from "@langchain/langgraph-checkpoint-mongodb";
-import { ChatOpenAI } from "@langchain/openai";
+import { getLLM } from "./llm";
 import { HumanMessage, AIMessage, SystemMessage, BaseMessage } from "@langchain/core/messages";
 import mongoose from "mongoose";
 import { retrieveChunks, formatCitations } from "./rag-helper";
@@ -51,14 +51,7 @@ async function callAgent(state: typeof MessagesAnnotation.State, runConfig?: any
     .join("\n\n");
 
   // Setup LLM
-  const model = new ChatOpenAI({
-    model: config.openai.chatModel,
-    temperature: 0.2,
-    configuration: {
-      baseURL: config.openai.baseURL,
-      apiKey: config.openai.apiKey,
-    },
-  });
+  const model = getLLM(0.2);
 
   // Form message sequence for ChatOpenAI API
   const apiMessages: BaseMessage[] = [

@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface ISource extends Document {
   notebookId: mongoose.Types.ObjectId;
   name: string;
-  type: "pdf" | "text" | "url" | "youtube" | "transcript";
+  type: "pdf" | "text" | "url" | "youtube" | "transcript" | "image";
   status: "uploading" | "indexing" | "completed" | "failed";
   error?: string;
   pathOrUrl?: string;
@@ -15,7 +15,7 @@ const SourceSchema = new Schema<ISource>({
   name: { type: String, required: true, trim: true },
   type: {
     type: String,
-    enum: ["pdf", "text", "url", "youtube", "transcript"],
+    enum: ["pdf", "text", "url", "youtube", "transcript", "image"],
     required: true,
   },
   status: {

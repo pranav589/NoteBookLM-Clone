@@ -157,11 +157,15 @@ const queryWorker = new Worker(
 
       console.log(`   → Answered and stored query in DB. Chunks used: ${result.sources?.length}`);
 
-      // Publish query completion via SSE
+      // Publish query completion via SSE with content and sources for instant UI updates
+      console.log(`⚡ [BACKEND] Publishing query:complete at: ${new Date().toISOString()}`);
       await sseManager.publish(job.data.notebookId, {
         type: "query:complete",
         clientMessageId: job.data.clientMessageId,
-        result,
+        messageId: Math.random().toString(), // Add a unique ID for rendering key
+        content: result.answer,
+        sources: result.sources,
+        queries: result.queries,
       });
 
       return result;
