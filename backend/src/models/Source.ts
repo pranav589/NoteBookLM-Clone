@@ -1,9 +1,10 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { SourceType, SOURCE_TYPES } from "../types";
 
 export interface ISource extends Document {
   notebookId: mongoose.Types.ObjectId;
   name: string;
-  type: "pdf" | "text" | "url" | "youtube" | "transcript" | "image";
+  type: SourceType;
   status: "uploading" | "indexing" | "completed" | "failed";
   error?: string;
   pathOrUrl?: string;
@@ -15,7 +16,7 @@ const SourceSchema = new Schema<ISource>({
   name: { type: String, required: true, trim: true },
   type: {
     type: String,
-    enum: ["pdf", "text", "url", "youtube", "transcript", "image"],
+    enum: [...SOURCE_TYPES],
     required: true,
   },
   status: {

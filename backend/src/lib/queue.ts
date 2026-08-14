@@ -49,11 +49,13 @@ if (process.env.NODE_ENV !== "production") {
   globalForQueue.queryQueue = queryQueue;
 }
 
+import { SourceType } from "../types";
+
 export async function enqueueIndexingJob(payload: {
   sourceId: string;
   notebookId: string;
   userId: string;
-  type: "pdf" | "text" | "url" | "youtube" | "transcript";
+  type: SourceType;
   filePath?: string;
   url?: string;
   name: string;

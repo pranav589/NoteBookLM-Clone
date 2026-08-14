@@ -20,6 +20,7 @@ import {
   RAG_SYSTEM_PROMPT_BASE,
 } from "./prompts";
 import { ensurePayloadIndexes, getVectorStore } from "./qdrant-client";
+import { SourceType } from "../types";
 
 /**
  * Full indexing pipeline for a notebook knowledge source:
@@ -37,7 +38,7 @@ export async function indexSource({
   sourceId: string;
   notebookId: string;
   userId: string;
-  type: "pdf" | "text" | "url" | "youtube" | "transcript" | "image";
+  type: SourceType;
   filePath?: string;
   url?: string;
   name: string;

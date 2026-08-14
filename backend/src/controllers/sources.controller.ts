@@ -1,7 +1,7 @@
 import { Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { SourceService } from "../services/source.service";
-import { SourceType } from "../types";
+import { SourceType, SOURCE_TYPES } from "../types";
 import { AuthRequest } from "../middleware/auth.middleware";
 
 export class SourcesController {
@@ -28,7 +28,7 @@ export class SourcesController {
 
       const userId = req.user!.id;
       const { type, text, name, url } = req.body;
-      if (!type || !["pdf", "text", "url", "youtube", "transcript", "image"].includes(type)) {
+      if (!type || !SOURCE_TYPES.includes(type as any)) {
         return res.status(400).json({ error: "Invalid or missing 'type' field" });
       }
 

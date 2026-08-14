@@ -2,7 +2,7 @@ import { getLLM } from "../lib/llm";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { config } from "../config";
-import { PodcastTurn, RoadmapResult, MindMapResult, MindMapNode } from "../types";
+import { PodcastTurn, RoadmapResult, MindMapResult, MindMapNode, SOURCE_TYPES } from "../types";
 import {
   ROADMAP_SYSTEM_PROMPT,
   PODCAST_SYSTEM_PROMPT,
@@ -43,7 +43,7 @@ const roadmapResultSchema = z.object({
       concept: z.string().describe("Concept Name"),
       description: z.string().describe("Short explanation of the concept."),
       sourceName: z.string().describe("Name of the source file or video"),
-      sourceType: z.enum(["youtube", "pdf", "url", "text", "transcript"]).describe("Source type"),
+      sourceType: z.enum(SOURCE_TYPES as any).describe("Source type"),
       url: z.string().describe("Source URL"),
       timestamp: z.number().describe("Exact timestamp or pageNumber of the source Item"),
       reason: z.string().describe("Why this node comes first or why it is important")
@@ -74,7 +74,7 @@ const mindMapResultSchema = z.object({
       relatedQuestions: z.array(z.string()).describe("Natural questions a student could ask"),
       sourceId: z.string().describe("Source ID from item"),
       sourceName: z.string().describe("Exact source title"),
-      sourceType: z.enum(["youtube", "pdf", "url", "text", "transcript"]).describe("Source type"),
+      sourceType: z.enum(SOURCE_TYPES as any).describe("Source type"),
       sourceLocation: z.number().describe("Source location (timestamp or pageNumber)")
     })
   ),
