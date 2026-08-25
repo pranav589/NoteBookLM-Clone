@@ -55,7 +55,7 @@ export async function indexSource({
     let loader: PDFLoader;
     if (mongoose.Types.ObjectId.isValid(filePath)) {
       const buffer = await downloadFileFromGridFS(filePath);
-      const blob = new Blob([buffer]);
+      const blob = new Blob([new Uint8Array(buffer)]);
       loader = new PDFLoader(blob);
     } else {
       loader = new PDFLoader(filePath);

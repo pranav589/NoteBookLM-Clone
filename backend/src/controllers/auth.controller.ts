@@ -210,13 +210,22 @@ export const AuthController = {
       setTokenCookies(res, accessToken, refreshToken);
       if (
         state &&
-        (state.startsWith("exp://") || state.startsWith("mindly://"))
+        (state.startsWith("exp://") ||
+          state.startsWith("mindly://") ||
+          state.startsWith("lumabook://"))
       ) {
         const separator = state.includes("?") ? "&" : "?";
-        res.redirect(
-          `${state}${separator}accessToken=${accessToken}&refreshToken=${refreshToken}`,
+        const redirectTarget = `${state}${separator}accessToken=${accessToken}&refreshToken=${refreshToken}`;
+        console.log(
+          "[OAuth Callback] Redirecting native client to:",
+          redirectTarget.substring(0, 80) + "...",
         );
+        res.redirect(redirectTarget);
       } else {
+        console.log(
+          "[OAuth Callback] Redirecting web/default client to:",
+          state || FRONTEND_URL,
+        );
         res.redirect(state || FRONTEND_URL);
       }
     } catch (err) {
