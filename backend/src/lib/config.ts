@@ -32,6 +32,9 @@ export const config = {
     rrfK: Number(process.env.RRF_K) || 60, // RRF constant
     finalK: Number(process.env.RETRIEVAL_FINAL_K) || 5, // final docs
   },
+  assemblyai: {
+    apiKey: process.env.ASSEMBLYAI_API_KEY || "",
+  },
 };
 
 export const INDEXING_QUEUE = "file-indexing";

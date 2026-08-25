@@ -1,26 +1,34 @@
+import crypto from "crypto";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
-import { User } from "../models/User";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { User } from "../models/User";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/api/auth/google/callback";
+const GOOGLE_REDIRECT_URI =
+  process.env.GOOGLE_REDIRECT_URI ||
+  "http://localhost:5000/api/auth/google/callback";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_default_jwt_secret_key_123456";
-const REFRESH_SECRET = process.env.REFRESH_SECRET || "fallback_refresh_secret_key_7890";
+const JWT_SECRET =
+  process.env.JWT_SECRET || "fallback_default_jwt_secret_key_123456";
+const REFRESH_SECRET =
+  process.env.REFRESH_SECRET || "fallback_refresh_secret_key_7890";
 
 // ── Token durations ────────────────────────────────────────────
-const ACCESS_TOKEN_TTL_S  = 60 * 60;          // 1 hour in seconds
+const ACCESS_TOKEN_TTL_S = 60 * 60; // 1 hour in seconds
 const REFRESH_TOKEN_TTL_S = 7 * 24 * 60 * 60; // 7 days in seconds
-const ACCESS_TOKEN_COOKIE_MS  = ACCESS_TOKEN_TTL_S * 1000;
+const ACCESS_TOKEN_COOKIE_MS = ACCESS_TOKEN_TTL_S * 1000;
 const REFRESH_TOKEN_COOKIE_MS = REFRESH_TOKEN_TTL_S * 1000;
 
 // ── Cookie helper ──────────────────────────────────────────────
 const isProduction = process.env.NODE_ENV === "production";
 
-function setTokenCookies(res: Response, accessToken: string, refreshToken: string) {
+function setTokenCookies(
+  res: Response,
+  accessToken: string,
+  refreshToken: string,
+) {
   res.cookie("access_token", accessToken, {
     httpOnly: true,
     secure: isProduction,
@@ -37,7 +45,11 @@ function setTokenCookies(res: Response, accessToken: string, refreshToken: strin
 }
 
 function clearTokenCookies(res: Response) {
-  res.clearCookie("access_token", { httpOnly: true, secure: isProduction, sameSite: isProduction ? "none" : "lax" });
+  res.clearCookie("access_token", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+  });
   res.clearCookie("refresh_token", {
     httpOnly: true,
     secure: isProduction,
@@ -47,7 +59,11 @@ function clearTokenCookies(res: Response) {
 }
 
 // ── Token generation ───────────────────────────────────────────
-function generateAccessToken(payload: { id: string; email: string; name: string }) {
+function generateAccessToken(payload: {
+  id: string;
+  email: string;
+  name: string;
+}) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL_S });
 }
 
@@ -63,11 +79,13 @@ function hashToken(token: string): string {
 export const AuthController = {
   googleLogin: (req: Request, res: Response) => {
     if (!GOOGLE_CLIENT_ID) {
-      res.status(500).json({ error: "Google OAuth credentials not configured on backend." });
+      res
+        .status(500)
+        .json({ error: "Google OAuth credentials not configured on backend." });
       return;
     }
 
-    const state = req.query.state as string || "";
+    const state = (req.query.state as string) || "";
 
     const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     const options = {
@@ -92,7 +110,11 @@ export const AuthController = {
     const state = req.query.state as string;
 
     if (!code) {
-      res.redirect(state ? `${state}?error=no_code` : `${FRONTEND_URL}/login?error=no_code`);
+      res.redirect(
+        state
+          ? `${state}?error=no_code`
+          : `${FRONTEND_URL}/login?error=no_code`,
+      );
       return;
     }
 
@@ -114,31 +136,48 @@ export const AuthController = {
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
         console.error("Token exchange failed:", errorText);
-        res.redirect(state ? `${state}?error=token_exchange_failed` : `${FRONTEND_URL}/login?error=token_exchange_failed`);
+        res.redirect(
+          state
+            ? `${state}?error=token_exchange_failed`
+            : `${FRONTEND_URL}/login?error=token_exchange_failed`,
+        );
         return;
       }
 
-      const { access_token } = await tokenResponse.json() as { access_token: string };
+      const { access_token } = (await tokenResponse.json()) as {
+        access_token: string;
+      };
 
       // Fetch user profile from Google
-      const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
+      const userInfoResponse = await fetch(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        {
+          headers: { Authorization: `Bearer ${access_token}` },
+        },
+      );
 
       if (!userInfoResponse.ok) {
         console.error("Failed to fetch Google user info");
-        res.redirect(state ? `${state}?error=profile_fetch_failed` : `${FRONTEND_URL}/login?error=profile_fetch_failed`);
+        res.redirect(
+          state
+            ? `${state}?error=profile_fetch_failed`
+            : `${FRONTEND_URL}/login?error=profile_fetch_failed`,
+        );
         return;
       }
 
-      const googleUser = await userInfoResponse.json() as {
+      const googleUser = (await userInfoResponse.json()) as {
         email: string;
         name: string;
         picture?: string;
       };
 
       if (!googleUser.email) {
-        res.redirect(state ? `${state}?error=email_not_provided` : `${FRONTEND_URL}/login?error=email_not_provided`);
+        res.redirect(
+          state
+            ? `${state}?error=email_not_provided`
+            : `${FRONTEND_URL}/login?error=email_not_provided`,
+        );
         return;
       }
 
@@ -157,7 +196,11 @@ export const AuthController = {
 
       // Issue access token (1h) + refresh token (7d)
       const userId = (user._id as any).toString();
-      const accessToken  = generateAccessToken({ id: userId, email: user.email, name: user.name });
+      const accessToken = generateAccessToken({
+        id: userId,
+        email: user.email,
+        name: user.name,
+      });
       const refreshToken = generateRefreshToken({ id: userId });
 
       // Hash and store refresh token for revocation
@@ -165,15 +208,24 @@ export const AuthController = {
       await user.save();
 
       setTokenCookies(res, accessToken, refreshToken);
-      if (state && (state.startsWith("exp://") || state.startsWith("lumabook://"))) {
+      if (
+        state &&
+        (state.startsWith("exp://") || state.startsWith("mindly://"))
+      ) {
         const separator = state.includes("?") ? "&" : "?";
-        res.redirect(`${state}${separator}accessToken=${accessToken}&refreshToken=${refreshToken}`);
+        res.redirect(
+          `${state}${separator}accessToken=${accessToken}&refreshToken=${refreshToken}`,
+        );
       } else {
         res.redirect(state || FRONTEND_URL);
       }
     } catch (err) {
       console.error("Google auth callback error:", err);
-      res.redirect(state ? `${state}?error=unknown_error` : `${FRONTEND_URL}/login?error=unknown_error`);
+      res.redirect(
+        state
+          ? `${state}?error=unknown_error`
+          : `${FRONTEND_URL}/login?error=unknown_error`,
+      );
     }
   },
 
@@ -201,14 +253,22 @@ export const AuthController = {
 
       // Issue new access token + rotate refresh token
       const userId = (user._id as any).toString();
-      const newAccessToken  = generateAccessToken({ id: userId, email: user.email, name: user.name });
+      const newAccessToken = generateAccessToken({
+        id: userId,
+        email: user.email,
+        name: user.name,
+      });
       const newRefreshToken = generateRefreshToken({ id: userId });
 
       user.refreshToken = hashToken(newRefreshToken);
       await user.save();
 
       setTokenCookies(res, newAccessToken, newRefreshToken);
-      res.json({ success: true, accessToken: newAccessToken, refreshToken: newRefreshToken });
+      res.json({
+        success: true,
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      });
     } catch (err) {
       clearTokenCookies(res);
       res.status(401).json({ error: "Invalid or expired refresh token." });

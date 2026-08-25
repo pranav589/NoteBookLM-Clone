@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
-import { Source, ISource } from "../lib/db";
-import { enqueueIndexingJob } from "../lib/queue";
-import { deleteSourceVectors } from "../lib/qdrant-client";
 import { config } from "../config";
-import { uploadFileToGridFS, deleteFileFromGridFS } from "../lib/gridfs";
+import { ISource, Source } from "../lib/db";
+import { deleteFileFromGridFS, uploadFileToGridFS } from "../lib/gridfs";
+import { deleteSourceVectors } from "../lib/qdrant-client";
+import { enqueueIndexingJob } from "../lib/queue";
 import { SourceType } from "../types";
 
 export class SourceService {
@@ -28,7 +28,7 @@ export class SourceService {
     let filePath: string | undefined;
     let submittedUrl: string | undefined;
 
-    if (type === "pdf" || type === "image" || type === "transcript" || (type === "text" && file)) {
+    if (type === "pdf" || type === "transcript" || (type === "text" && file)) {
       if (!file) {
         throw new Error(`File is required for source type '${type}'`);
       }
@@ -36,7 +36,7 @@ export class SourceService {
         file.buffer,
         file.originalname,
         file.mimetype,
-        { userId, notebookId }
+        { userId, notebookId },
       );
       filePath = fileId;
       originalName = file.originalname;
@@ -47,7 +47,7 @@ export class SourceService {
         textBuffer,
         `${title}.txt`,
         "text/plain",
-        { userId, notebookId }
+        { userId, notebookId },
       );
       filePath = fileId;
       originalName = title;
@@ -150,7 +150,7 @@ export class SourceService {
         console.error(
           "Warning: Failed to delete file from GridFS:",
           source.pathOrUrl,
-          gridfsErr
+          gridfsErr,
         );
       }
     }
@@ -195,6 +195,9 @@ export class SourceService {
     });
 
     if (!qdrantRes.ok) {
+      if (qdrantRes.status === 404) {
+        return [];
+      }
       throw new Error(`Failed to fetch from Qdrant: ${qdrantRes.statusText}`);
     }
 
