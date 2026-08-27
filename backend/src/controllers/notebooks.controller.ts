@@ -10,7 +10,8 @@ import { AuthRequest } from "../middleware/auth.middleware";
 export class NotebooksController {
   public static async list(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const notebooks = await NotebookService.listNotebooks(req.user!.email);
+      const search = typeof req.query.q === "string" ? req.query.q : undefined;
+      const notebooks = await NotebookService.listNotebooks(req.user!.email, search);
       return res.json(notebooks);
     } catch (err) {
       return next(err);

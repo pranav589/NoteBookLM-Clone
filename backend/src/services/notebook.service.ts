@@ -2,8 +2,12 @@ import { Notebook, Source, ChatMessage, INotebook, ISource } from "../lib/db";
 import { deleteNotebookVectors } from "../lib/qdrant-client";
 
 export class NotebookService {
-  public static async listNotebooks(userEmail: string): Promise<any[]> {
-    const notebooks = await Notebook.find({ userEmail }).sort({ createdAt: -1 });
+  public static async listNotebooks(userEmail: string, search?: string): Promise<any[]> {
+    const filter: any = { userEmail };
+    if (search && search.trim().length > 0) {
+      filter.name = { $regex: search.trim(), $options: "i" };
+    }
+    const notebooks = await Notebook.find(filter).sort({ createdAt: -1 });
     const result = await Promise.all(
       notebooks.map(async (nb) => {
         const sourcesCount = await Source.countDocuments({ notebookId: nb._id });
