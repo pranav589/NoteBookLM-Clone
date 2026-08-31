@@ -1,5 +1,5 @@
 import { Embeddings, type EmbeddingsParams } from "@langchain/core/embeddings";
-import { config } from "./config";
+import { config } from "../../lib/config";
 
 export class MistralDirectEmbeddings extends Embeddings {
   apiKey: string;
@@ -88,4 +88,3 @@ export const embeddings = new MistralDirectEmbeddings({
   baseURL: config.openai.baseURL,
   model: config.openai.embeddingModel,
 });
-

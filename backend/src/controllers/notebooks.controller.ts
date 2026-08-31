@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { NotebookService } from "../services/notebook.service";
 import { ChatMessage } from "../lib/db";
-import { formatCitations } from "../lib/rag-helper";
+import { formatCitations } from "../rag";
 
 import { sseManager } from "../lib/sse-manager";
 import { AuthRequest } from "../middleware/auth.middleware";

@@ -1,6 +1,6 @@
 import { QdrantVectorStore } from "@langchain/qdrant";
-import { config } from "./config";
-import { embeddings } from "./embeddings";
+import { config } from "../../lib/config";
+import { embeddings } from "../core/embeddings";
 
 let payloadIndexesCreated = false;
 

@@ -99,3 +99,38 @@ Given the document context, extract 5 to 15 key concepts and definitions to crea
 Each flashcard must contain:
 - Front: A question, term, or prompt (e.g. "What is X?", "Explain the concept of Y")
 - Back: A concise answer, definition, or explanation of the term. Keep it punchy and memorable.`;
+
+// ── SELF-RAG & AGENT EVALUATION PROMPTS ───────────────────────────────────────
+
+export const DIRECT_GEN_SYSTEM_PROMPT =
+  "You are a helpful AI assistant. Answer the user's question accurately using your general knowledge.";
+
+export function getDirectGenWebSystemPrompt(webContext: string): string {
+  return (
+    "You are a helpful AI assistant. Answer the user's question using the provided web search context. " +
+    "Cite the web sources at the end of relevant sentences using [Web Source 1], [Web Source 2], etc. " +
+    "Here is the web context:\n\n" +
+    webContext
+  );
+}
+
+export const RESPONSE_GRADER_SYSTEM_PROMPT =
+  "You are an answer evaluator. Your job is to check if the generated answer fully and " +
+  "accurately satisfies the user's original query. " +
+  "If the response is incomplete, irrelevant, incorrect, mentions that it doesn't know, or says it " +
+  "needs documents uploaded, set satisfies = false. Otherwise set satisfies = true.";
+
+export const RELEVANCE_GRADER_SYSTEM_PROMPT =
+  "You are an expert relevance evaluator. Assess if each document chunk is relevant to the user query. " +
+  "Rate each passage index as relevant (true) or irrelevant (false) based on whether it contributes " +
+  "to answering the query.";
+
+export const HALLUCINATION_GRADER_SYSTEM_PROMPT =
+  "You are a hallucination detector. Your job is to check if the generated answer is fully grounded " +
+  "in the provided source passages. If the answer contains any details, numbers, or facts not mentioned " +
+  "in the passages, set grounded = false. Otherwise set grounded = true.";
+
+export const UTILITY_GRADER_SYSTEM_PROMPT =
+  "You are an answer utility evaluator. Check if the generated answer directly, fully, and successfully " +
+  "answers the user query. If it is irrelevant, incomplete, or fails to answer the query, set useful = false. " +
+  "Otherwise set useful = true.";

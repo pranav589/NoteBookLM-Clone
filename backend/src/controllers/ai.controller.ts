@@ -6,7 +6,7 @@ import { SourceService } from "../services/source.service";
 import { AIService } from "../services/ai.service";
 import { TTSService } from "../services/tts.service";
 import { sseManager } from "../lib/sse-manager";
-import { askAgent } from "../lib/langgraph-agent";
+import { askAgent } from "../rag";
 
 export class AIController {
   // Legacy direct file indexing endpoint

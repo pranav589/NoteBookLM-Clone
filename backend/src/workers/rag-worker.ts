@@ -1,10 +1,9 @@
 
 import { Worker } from "bullmq";
 import { connection } from "../lib/queue";
-import { INDEXING_QUEUE, QUERY_QUEUE } from "../lib/config";
+import { INDEXING_QUEUE, QUERY_QUEUE, config } from "../lib/config";
 import { connectToDatabase, Source, ChatMessage, Notification } from "../lib/db";
-import { indexSource } from "../lib/rag-helper";
-import { askAgent } from "../lib/langgraph-agent";
+import { indexSource, answerQuery, askAgent } from "../rag";
 import { sseManager } from "../lib/sse-manager";
 
 console.log("Worker starting...");
@@ -137,7 +136,9 @@ const queryWorker = new Worker(
     console.log(`🔎 Query job ${job.id}: ${JSON.stringify(job.data.query)} inside Notebook: ${job.data.notebookId}`);
     try {
       await connectToDatabase();
-      const result = await askAgent(job.data.query, job.data.notebookId);
+      const result = config.useAdvancedRag
+        ? await askAgent(job.data.query, job.data.notebookId)
+        : await answerQuery(job.data.query, job.data.notebookId);
       
       // Save User Question to DB
       await ChatMessage.create({

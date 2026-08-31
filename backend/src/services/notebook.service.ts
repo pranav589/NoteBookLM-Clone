@@ -1,5 +1,5 @@
 import { Notebook, Source, ChatMessage, INotebook, ISource } from "../lib/db";
-import { deleteNotebookVectors } from "../lib/qdrant-client";
+import { deleteNotebookVectors } from "../rag";
 
 export class NotebookService {
   public static async listNotebooks(userEmail: string, search?: string): Promise<any[]> {

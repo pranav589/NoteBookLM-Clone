@@ -1,4 +1,4 @@
-import { getLLM } from "../lib/llm";
+import { getLLM } from "../rag/core/llm";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { config } from "../config";
@@ -9,7 +9,7 @@ import {
   MINDMAP_SYSTEM_PROMPT,
   QUIZ_SYSTEM_PROMPT,
   FLASHCARD_SYSTEM_PROMPT,
-} from "../lib/prompts";
+} from "../rag/core/prompts";
 
 const quizResultSchema = z.object({
   title: z.string().describe("Descriptive title of the quiz"),

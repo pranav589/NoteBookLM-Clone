@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { config } from "../config";
 import { ISource, Source } from "../lib/db";
 import { deleteFileFromGridFS, uploadFileToGridFS } from "../lib/gridfs";
-import { deleteSourceVectors } from "../lib/qdrant-client";
+import { deleteSourceVectors } from "../rag";
 import { enqueueIndexingJob } from "../lib/queue";
 import { SourceType } from "../types";
 
@@ -28,7 +28,7 @@ export class SourceService {
     let filePath: string | undefined;
     let submittedUrl: string | undefined;
 
-    if (type === "pdf" || type === "transcript" || (type === "text" && file)) {
+    if (type === "pdf" || type === "transcript" || type === "image" || (type === "text" && file)) {
       if (!file) {
         throw new Error(`File is required for source type '${type}'`);
       }
