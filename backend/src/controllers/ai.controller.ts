@@ -320,11 +320,15 @@ export class AIController {
           dbNotificationId: startNotif._id,
         });
 
-        const audioUrl = await TTSService.generatePodcastAudio(notebookId, script);
+        const podcastResult = await TTSService.generatePodcastAudio(notebookId, script);
 
         const updatedNotebook = await Notebook.findById(notebookId);
         if (updatedNotebook) {
-          updatedNotebook.podcast = { audioUrl, script };
+          updatedNotebook.podcast = {
+            audioUrl: podcastResult.audioUrl,
+            cloudinaryPublicId: podcastResult.cloudinaryPublicId,
+            script,
+          };
           updatedNotebook.podcastStatus = "idle";
           await updatedNotebook.save();
         }
@@ -343,7 +347,7 @@ export class AIController {
 
         await sseManager.publish(notebookId, {
           type: "podcast:complete",
-          audioUrl,
+          audioUrl: podcastResult.audioUrl,
           script,
           dbNotificationId: completeNotif._id,
         });

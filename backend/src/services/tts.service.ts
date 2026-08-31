@@ -1,7 +1,7 @@
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import mongoose from "mongoose";
 import { Notebook } from "../lib/db";
-import { uploadFileToGridFS, deleteFileFromGridFS } from "../lib/gridfs";
+import { uploadBufferToCloudinary, deleteFromCloudinary } from "../lib/cloudinary";
 import { PodcastTurn } from "../types";
 
 function streamToBuffer(readableStream: any): Promise<Buffer> {
@@ -23,7 +23,7 @@ export class TTSService {
   public static async generatePodcastAudio(
     notebookId: string,
     script: PodcastTurn[]
-  ): Promise<string> {
+  ): Promise<{ audioUrl: string; cloudinaryPublicId: string }> {
     const audioBuffers: Buffer[] = [];
 
     for (const turn of script) {
@@ -51,25 +51,24 @@ export class TTSService {
     // Clean up previous podcast audio file if exists to prevent orphaned files
     try {
       const notebook = await Notebook.findById(notebookId);
-      if (notebook?.podcast?.audioUrl) {
-        const parts = notebook.podcast.audioUrl.split("/");
-        const oldFileId = parts[parts.length - 1];
-        if (mongoose.Types.ObjectId.isValid(oldFileId)) {
-          await deleteFileFromGridFS(oldFileId);
-        }
+      if (notebook?.podcast?.cloudinaryPublicId) {
+        await deleteFromCloudinary(notebook.podcast.cloudinaryPublicId, "video");
       }
     } catch (cleanupErr) {
-      console.error("Warning: Failed to clean up previous podcast from GridFS:", cleanupErr);
+      console.error("Warning: Failed to clean up previous podcast:", cleanupErr);
     }
 
-    // Upload new podcast audio to GridFS
-    const fileId = await uploadFileToGridFS(
+    // Upload new podcast audio to Cloudinary
+    const uploadRes = await uploadBufferToCloudinary(
       finalMp3Buffer,
+      "mindly/podcasts",
       `podcast-${notebookId}.mp3`,
-      "audio/mpeg",
-      { notebookId }
+      "video"
     );
 
-    return `/api/media/${fileId}`;
+    return {
+      audioUrl: uploadRes.secure_url,
+      cloudinaryPublicId: uploadRes.public_id,
+    };
   }
 }

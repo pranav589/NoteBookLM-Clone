@@ -47,6 +47,11 @@ export const config = {
       process.env.JINA_RERANK_MODEL || "jina-reranker-v2-base-multilingual",
   },
   useAdvancedRag: process.env.USE_ADVANCED_RAG !== "false",
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
+    apiKey: process.env.CLOUDINARY_API_KEY || "",
+    apiSecret: process.env.CLOUDINARY_API_SECRET || "",
+  },
 };
 
 export const INDEXING_QUEUE = "file-indexing";

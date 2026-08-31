@@ -19,6 +19,26 @@ export class SourcesController {
     }
   }
 
+  public static async get(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { id: notebookId, sourceId } = req.params;
+      if (
+        !mongoose.Types.ObjectId.isValid(notebookId) ||
+        !mongoose.Types.ObjectId.isValid(sourceId)
+      ) {
+        return res.status(400).json({ error: "Invalid notebook or source ID" });
+      }
+
+      const source = await SourceService.getSource(notebookId, sourceId);
+      return res.json(source);
+    } catch (err: any) {
+      if (err.message === "Source not found") {
+        return res.status(404).json({ error: err.message });
+      }
+      return next(err);
+    }
+  }
+
   public static async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id: notebookId } = req.params;
@@ -27,7 +47,7 @@ export class SourcesController {
       }
 
       const userId = req.user!.id;
-      const { type, text, name, url } = req.body;
+      const { type, text, name, description, url } = req.body;
       if (!type || !SOURCE_TYPES.includes(type as any)) {
         return res.status(400).json({ error: "Invalid or missing 'type' field" });
       }
@@ -38,6 +58,7 @@ export class SourcesController {
         type: type as SourceType,
         text,
         name,
+        description,
         url,
         file: req.file,
       });

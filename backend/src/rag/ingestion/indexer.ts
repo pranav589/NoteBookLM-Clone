@@ -8,10 +8,11 @@ import mongoose from "mongoose";
 import { config } from "../../lib/config";
 import { getVisionLLM } from "../core/llm";
 import { embeddings } from "../core/embeddings";
-import { downloadFileFromGridFS } from "../../lib/gridfs";
+import { downloadFileFromCloudinary } from "../../lib/cloudinary";
 import { fetchYoutubeTranscript, parseVtt, scrapeWebsite } from "./parsers";
 import { ensurePayloadIndexes } from "../vector-store/qdrant";
 import { SourceType } from "../../types";
+import { AssemblyAI } from "assemblyai";
 
 /**
  * Full indexing pipeline for a notebook knowledge source:
@@ -44,8 +45,8 @@ export async function indexSource({
   if (type === "pdf") {
     if (!filePath) throw new Error("Missing filePath for PDF");
     let loader: PDFLoader;
-    if (mongoose.Types.ObjectId.isValid(filePath)) {
-      const buffer = await downloadFileFromGridFS(filePath);
+    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+      const buffer = await downloadFileFromCloudinary(filePath);
       const blob = new Blob([new Uint8Array(buffer)]);
       loader = new PDFLoader(blob);
     } else {
@@ -70,8 +71,8 @@ export async function indexSource({
   } else if (type === "text") {
     if (!filePath) throw new Error("Missing filePath for Text source");
     let rawText = "";
-    if (mongoose.Types.ObjectId.isValid(filePath)) {
-      const buffer = await downloadFileFromGridFS(filePath);
+    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+      const buffer = await downloadFileFromCloudinary(filePath);
       rawText = buffer.toString("utf-8");
     } else {
       rawText = await fs.readFile(filePath, "utf-8");
@@ -93,8 +94,8 @@ export async function indexSource({
   } else if (type === "image") {
     if (!filePath) throw new Error("Missing filePath for Image source");
     let buffer: Buffer;
-    if (mongoose.Types.ObjectId.isValid(filePath)) {
-      buffer = await downloadFileFromGridFS(filePath);
+    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+      buffer = await downloadFileFromCloudinary(filePath);
     } else {
       buffer = await fs.readFile(filePath);
     }
@@ -218,8 +219,8 @@ export async function indexSource({
   } else if (type === "transcript") {
     if (!filePath) throw new Error("Missing filePath for Transcript source");
     let content = "";
-    if (mongoose.Types.ObjectId.isValid(filePath)) {
-      const buffer = await downloadFileFromGridFS(filePath);
+    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+      const buffer = await downloadFileFromCloudinary(filePath);
       content = buffer.toString("utf-8");
     } else {
       content = await fs.readFile(filePath, "utf-8");
@@ -271,6 +272,38 @@ export async function indexSource({
         }),
       );
     }
+  } else if (type === "video") {
+    if (!filePath) throw new Error("Missing filePath for Video source");
+    const apiKey = config.assemblyai.apiKey || process.env.ASSEMBLYAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("AssemblyAI API Key is not configured on the backend.");
+    }
+    const client = new AssemblyAI({ apiKey });
+    console.log(`[Video Indexer] Transcribing video from url: ${filePath}`);
+    const transcript = await client.transcripts.transcribe({
+      audio: filePath,
+    });
+    if (transcript.status === "error") {
+      throw new Error(`AssemblyAI video transcription failed: ${transcript.error}`);
+    }
+    const rawText = transcript.text || "";
+    if (!rawText.trim()) {
+      throw new Error("No text transcribed from the video.");
+    }
+    const splitTexts = await splitter.splitText(rawText);
+    docs = splitTexts.map((text, i) => {
+      return new Document({
+        pageContent: text,
+        metadata: {
+          notebookId,
+          sourceId,
+          userId,
+          sourceName: name,
+          sourceType: "video",
+          chunkIndex: i,
+        },
+      });
+    });
   }
 
   if (docs.length === 0) {

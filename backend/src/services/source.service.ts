@@ -1,7 +1,11 @@
 import mongoose from "mongoose";
 import { config } from "../config";
 import { ISource, Source } from "../lib/db";
-import { deleteFileFromGridFS, uploadFileToGridFS } from "../lib/gridfs";
+import {
+  uploadBufferToCloudinary,
+  deleteFromCloudinary,
+  getCloudinaryResourceType,
+} from "../lib/cloudinary";
 import { deleteSourceVectors } from "../rag";
 import { enqueueIndexingJob } from "../lib/queue";
 import { SourceType } from "../types";
@@ -13,43 +17,67 @@ export class SourceService {
     return Source.find({ notebookId }).sort({ createdAt: -1 });
   }
 
+  public static async getSource(
+    notebookId: string,
+    sourceId: string,
+  ): Promise<ISource> {
+    const source = await Source.findOne({ _id: sourceId, notebookId });
+    if (!source) {
+      throw new Error("Source not found");
+    }
+    return source;
+  }
+
   public static async createSource(params: {
     notebookId: string;
     userId: string;
     type: SourceType;
     text?: string;
     name?: string;
+    description?: string;
     url?: string;
     file?: Express.Multer.File;
   }): Promise<{ source: ISource; jobId: string }> {
-    const { notebookId, userId, type, text, name, url, file } = params;
+    const { notebookId, userId, type, text, name, description, url, file } = params;
 
-    let originalName = "";
+    let originalName = name || "";
     let filePath: string | undefined;
     let submittedUrl: string | undefined;
+    let cloudinaryId: string | undefined;
 
-    if (type === "pdf" || type === "transcript" || type === "image" || (type === "text" && file)) {
+    if (
+      type === "pdf" ||
+      type === "transcript" ||
+      type === "image" ||
+      type === "video" ||
+      (type === "text" && file)
+    ) {
       if (!file) {
         throw new Error(`File is required for source type '${type}'`);
       }
-      const fileId = await uploadFileToGridFS(
+      const resourceType = getCloudinaryResourceType(type);
+      const uploadRes = await uploadBufferToCloudinary(
         file.buffer,
+        "mindly/sources",
         file.originalname,
-        file.mimetype,
-        { userId, notebookId },
+        resourceType
       );
-      filePath = fileId;
-      originalName = file.originalname;
+      filePath = uploadRes.secure_url;
+      cloudinaryId = uploadRes.public_id;
+      if (!originalName) {
+        originalName = file.originalname;
+      }
     } else if (type === "text" && text) {
       const title = name || `Pasted Text - ${new Date().toLocaleDateString()}`;
       const textBuffer = Buffer.from(text, "utf-8");
-      const fileId = await uploadFileToGridFS(
+      const uploadRes = await uploadBufferToCloudinary(
         textBuffer,
+        "mindly/sources",
         `${title}.txt`,
-        "text/plain",
-        { userId, notebookId },
+        "raw"
       );
-      filePath = fileId;
+      filePath = uploadRes.secure_url;
+      cloudinaryId = uploadRes.public_id;
       originalName = title;
     } else if (type === "url" || type === "youtube") {
       if (!url || url.trim().length === 0) {
@@ -64,9 +92,11 @@ export class SourceService {
     const source = new Source({
       notebookId: new mongoose.Types.ObjectId(notebookId),
       name: originalName,
+      description,
       type,
       status: "indexing",
       pathOrUrl: filePath || submittedUrl,
+      cloudinaryPublicId: cloudinaryId,
     });
     await source.save();
 
@@ -142,15 +172,16 @@ export class SourceService {
       );
     }
 
-    // Clean up GridFS file if it is an ObjectId reference
-    if (source.pathOrUrl && mongoose.Types.ObjectId.isValid(source.pathOrUrl)) {
+    // Clean up Cloudinary file if public ID exists
+    if (source.cloudinaryPublicId) {
       try {
-        await deleteFileFromGridFS(source.pathOrUrl);
-      } catch (gridfsErr) {
+        const resourceType = getCloudinaryResourceType(source.type);
+        await deleteFromCloudinary(source.cloudinaryPublicId, resourceType);
+      } catch (cloudinaryErr) {
         console.error(
-          "Warning: Failed to delete file from GridFS:",
-          source.pathOrUrl,
-          gridfsErr,
+          "Warning: Failed to delete file from Cloudinary:",
+          source.cloudinaryPublicId,
+          cloudinaryErr,
         );
       }
     }

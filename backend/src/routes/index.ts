@@ -5,13 +5,11 @@ import jobRoutes from "./jobs.routes";
 import aiRoutes from "./ai.routes";
 import studyRoutes from "./study.routes";
 import authRoutes from "./auth.routes";
-import mediaRoutes from "./media.routes";
 import { authMiddleware, checkNotebookOwnership } from "../middleware/auth.middleware";
 
 const router = Router();
 
 router.use("/auth", authRoutes);
-router.use("/media", mediaRoutes); // Public media streaming route!
 
 // Protect all other routes
 router.use(authMiddleware as any);

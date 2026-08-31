@@ -1,4 +1,4 @@
-export const SOURCE_TYPES = ["pdf", "text", "url", "youtube", "transcript", "image"] as const;
+export const SOURCE_TYPES = ["pdf", "text", "url", "youtube", "transcript", "image", "video"] as const;
 export type SourceType = typeof SOURCE_TYPES[number];
 
 export interface IndexingJobPayload {

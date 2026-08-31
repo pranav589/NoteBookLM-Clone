@@ -4,16 +4,19 @@ import { SourceType, SOURCE_TYPES } from "../types";
 export interface ISource extends Document {
   notebookId: mongoose.Types.ObjectId;
   name: string;
+  description?: string;
   type: SourceType;
   status: "uploading" | "indexing" | "completed" | "failed";
   error?: string;
   pathOrUrl?: string;
+  cloudinaryPublicId?: string;
   createdAt: Date;
 }
 
 const SourceSchema = new Schema<ISource>({
   notebookId: { type: Schema.Types.ObjectId, ref: "Notebook", required: true },
   name: { type: String, required: true, trim: true },
+  description: { type: String, trim: true },
   type: {
     type: String,
     enum: [...SOURCE_TYPES],
@@ -26,6 +29,7 @@ const SourceSchema = new Schema<ISource>({
   },
   error: { type: String },
   pathOrUrl: { type: String },
+  cloudinaryPublicId: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 
